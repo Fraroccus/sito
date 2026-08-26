@@ -16,6 +16,7 @@ export interface Percorso {
   topics?: string[]; // Key topics/modules covered in the training
   requiresKit?: boolean; // Notice: "La scuola deve già essere in possesso del kit"
   isExample?: boolean; // To label the initial example
+  created_at?: string;
 }
 
 export interface Collaboration {
@@ -25,6 +26,7 @@ export interface Collaboration {
   logoText: string; // Fallback text representation if logoUrl is absent
   logoUrl?: string; // Optional URL for partner logo image
   websiteUrl?: string; // Optional URL to the partner's official website
+  created_at?: string;
 }
 
 export interface ContactFormData {

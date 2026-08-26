@@ -372,14 +372,21 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
         console.warn('Avviso recupero backend iniziale, operatività con dati locali:', err);
       }
 
-      // 3. Fallback to localStorage ONLY if backend/server returned no data or failed
+      // 3. Fallback to local cache or bundled initial data if backend/supabase returned no data
       if (localP.length > 0) {
         setPercorsi(localP);
         percorsiRef.current = localP;
+      } else {
+        setPercorsi(INITIAL_PERCORSI);
+        percorsiRef.current = INITIAL_PERCORSI;
       }
+
       if (localC.length > 0) {
         setCollaborations(localC);
         collaborationsRef.current = localC;
+      } else {
+        setCollaborations(DEFAULT_COLLABORATIONS);
+        collaborationsRef.current = DEFAULT_COLLABORATIONS;
       }
     };
     fetchInitialData();
