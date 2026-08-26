@@ -49,17 +49,30 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs = 3000): Promise<T>
 }
 
 /**
- * Fetch percorsi from Supabase database
+ * Fetch percorsi from Supabase database with robust ordering support
  */
 export async function fetchPercorsiFromSupabase(): Promise<Percorso[] | null> {
   if (!supabase || isSupabaseTemporarilyOffline) return null;
   try {
+    // 1. Try fetching ordered by position first
     const query = supabase
       .from('percorsi')
       .select('*')
-      .order('position', { ascending: true });
+      .order('position', { ascending: true, nullsFirst: false });
 
     const { data, error } = await withTimeout(Promise.resolve(query), 3500);
+
+    if (!error && data && data.length > 0) {
+      const hasNumbers = data.some((item: any) => typeof item.position === 'number' && !isNaN(item.position));
+      if (hasNumbers) {
+        return (data as any[]).sort((a, b) => (a.position ?? 9999) - (b.position ?? 9999)) as Percorso[];
+      }
+      return (data as any[]).sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeA - timeB;
+      }) as Percorso[];
+    }
 
     if (error) {
       const msg = error.message || '';
@@ -68,18 +81,21 @@ export async function fetchPercorsiFromSupabase(): Promise<Percorso[] | null> {
         return null;
       }
 
-      if (msg.includes('position') || msg.includes('column') || msg.includes('42703')) {
-        const fallbackQuery = supabase.from('percorsi').select('*');
-        const { data: fallbackData, error: fallbackError } = await withTimeout(Promise.resolve(fallbackQuery), 3000);
-        if (fallbackError) {
-          return null;
-        }
-        return fallbackData as Percorso[];
+      // Fallback: order by created_at ascending
+      const fallbackQuery = supabase
+        .from('percorsi')
+        .select('*')
+        .order('created_at', { ascending: true });
+      const { data: fallbackData, error: fallbackError } = await withTimeout(Promise.resolve(fallbackQuery), 3000);
+      if (fallbackError) {
+        const simpleQuery = supabase.from('percorsi').select('*');
+        const { data: simpleData } = await withTimeout(Promise.resolve(simpleQuery), 3000);
+        return simpleData as Percorso[];
       }
-
-      return null;
+      return fallbackData as Percorso[];
     }
-    return data as Percorso[];
+
+    return (data as Percorso[]) || null;
   } catch (err: any) {
     isSupabaseTemporarilyOffline = true;
     return null;
@@ -87,7 +103,7 @@ export async function fetchPercorsiFromSupabase(): Promise<Percorso[] | null> {
 }
 
 /**
- * Fetch collaborations from Supabase database
+ * Fetch collaborations from Supabase database with robust ordering support
  */
 export async function fetchCollaborationsFromSupabase(): Promise<Collaboration[] | null> {
   if (!supabase || isSupabaseTemporarilyOffline) return null;
@@ -95,9 +111,21 @@ export async function fetchCollaborationsFromSupabase(): Promise<Collaboration[]
     const query = supabase
       .from('collaborations')
       .select('*')
-      .order('position', { ascending: true });
+      .order('position', { ascending: true, nullsFirst: false });
 
     const { data, error } = await withTimeout(Promise.resolve(query), 3500);
+
+    if (!error && data && data.length > 0) {
+      const hasNumbers = data.some((item: any) => typeof item.position === 'number' && !isNaN(item.position));
+      if (hasNumbers) {
+        return (data as any[]).sort((a, b) => (a.position ?? 9999) - (b.position ?? 9999)) as Collaboration[];
+      }
+      return (data as any[]).sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeA - timeB;
+      }) as Collaboration[];
+    }
 
     if (error) {
       const msg = error.message || '';
@@ -106,18 +134,20 @@ export async function fetchCollaborationsFromSupabase(): Promise<Collaboration[]
         return null;
       }
 
-      if (msg.includes('position') || msg.includes('column') || msg.includes('42703')) {
-        const fallbackQuery = supabase.from('collaborations').select('*');
-        const { data: fallbackData, error: fallbackError } = await withTimeout(Promise.resolve(fallbackQuery), 3000);
-        if (fallbackError) {
-          return null;
-        }
-        return fallbackData as Collaboration[];
+      const fallbackQuery = supabase
+        .from('collaborations')
+        .select('*')
+        .order('created_at', { ascending: true });
+      const { data: fallbackData, error: fallbackError } = await withTimeout(Promise.resolve(fallbackQuery), 3000);
+      if (fallbackError) {
+        const simpleQuery = supabase.from('collaborations').select('*');
+        const { data: simpleData } = await withTimeout(Promise.resolve(simpleQuery), 3000);
+        return simpleData as Collaboration[];
       }
-
-      return null;
+      return fallbackData as Collaboration[];
     }
-    return data as Collaboration[];
+
+    return (data as Collaboration[]) || null;
   } catch (err: any) {
     isSupabaseTemporarilyOffline = true;
     return null;
@@ -125,11 +155,13 @@ export async function fetchCollaborationsFromSupabase(): Promise<Collaboration[]
 }
 
 /**
- * Save / sync percorsi to Supabase
+ * Save / sync percorsi to Supabase with deterministic order preservation
  */
 export async function syncPercorsiToSupabase(percorsi: Percorso[]) {
   if (!supabase || isSupabaseTemporarilyOffline) return;
   try {
+    // Deterministic timestamp sequence so order is maintained even on timestamp sorting
+    const baseTime = Date.now() - (percorsi.length * 1000);
     const payloadFull = percorsi.map((p, idx) => ({
       id: p.id,
       title: p.title,
@@ -142,6 +174,7 @@ export async function syncPercorsiToSupabase(percorsi: Percorso[]) {
       isExample: p.isExample || false,
       position: idx,
       requiresKit: p.requiresKit || false,
+      created_at: new Date(baseTime + idx * 1000).toISOString(),
     }));
 
     const upsertPromise = supabase
@@ -169,6 +202,7 @@ export async function syncPercorsiToSupabase(percorsi: Percorso[]) {
           gradientIndex: p.gradientIndex ?? (idx % 6),
           topics: p.topics || [],
           isExample: p.isExample || false,
+          created_at: new Date(baseTime + idx * 1000).toISOString(),
         }));
         
         const fallbackPromise = supabase
@@ -189,6 +223,7 @@ export async function syncPercorsiToSupabase(percorsi: Percorso[]) {
 export async function syncCollaborationsToSupabase(collaborations: Collaboration[]) {
   if (!supabase || isSupabaseTemporarilyOffline) return;
   try {
+    const baseTime = Date.now() - (collaborations.length * 1000);
     const payloadFull = collaborations.map((c, idx) => ({
       id: c.id,
       name: c.name,
@@ -197,6 +232,7 @@ export async function syncCollaborationsToSupabase(collaborations: Collaboration
       logoUrl: c.logoUrl || '',
       websiteUrl: c.websiteUrl || '',
       position: idx,
+      created_at: new Date(baseTime + idx * 1000).toISOString(),
     }));
 
     const upsertPromise = supabase
@@ -214,13 +250,14 @@ export async function syncCollaborationsToSupabase(collaborations: Collaboration
 
       // If position column doesn't exist in Supabase schema
       if (msg.includes('schema cache') || msg.includes('column') || msg.includes('42703')) {
-        const payloadStandard = collaborations.map((c) => ({
+        const payloadStandard = collaborations.map((c, idx) => ({
           id: c.id,
           name: c.name,
           role: c.role,
           logoText: c.logoText || '',
           logoUrl: c.logoUrl || '',
           websiteUrl: c.websiteUrl || '',
+          created_at: new Date(baseTime + idx * 1000).toISOString(),
         }));
 
         const fallbackPromise = supabase
