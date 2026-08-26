@@ -1,0 +1,6 @@
+{
+  "name": "Francesco Rocco - Formatore AI",
+  "description": "Sito web professionale di Francesco Rocco, formatore e consulente di Intelligenza Artificiale per scuole, PMI e professionisti, con catalogo percorsi gestibile.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
