@@ -55,8 +55,8 @@ export default function Navbar({ isAdmin, onToggleAdmin }: NavbarProps) {
                 <span className="font-sans font-bold text-sm sm:text-base text-slate-900 tracking-tight uppercase leading-none">
                   Francesco Rocco
                 </span>
-                <span className="font-mono text-[9px] text-slate-500 tracking-wider uppercase mt-1">
-                  Formatore AI & Progettista
+                <span className="font-mono text-[9px] sm:text-[9.5px] text-slate-500 tracking-[0.14em] sm:tracking-[0.16em] uppercase mt-1">
+                  Formatore & Progettista
                 </span>
               </div>
             </button>
