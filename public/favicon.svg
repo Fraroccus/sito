@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <rect width="512" height="512" rx="110" fill="#ffffff"/>
+  <!-- Blue Head Silhouette Profile facing right -->
+  <path d="M285 85 C380 85 450 150 450 250 C450 300 435 340 405 375 C390 392 375 408 360 425 C345 440 330 455 310 460 L290 460 C280 430 282 390 285 360 C290 320 292 270 288 230 C286 195 285 140 285 85 Z" fill="#1d6fa5"/>
+  <path d="M405 375 C420 378 445 370 455 350 C462 335 458 310 445 295 C435 282 425 280 415 280 C410 260 412 235 425 220 C435 210 450 208 458 190 C465 170 450 145 428 135 C400 120 360 105 315 95 C305 130 300 180 300 240 C300 310 305 370 310 430 C340 420 375 400 405 375 Z" fill="#1d6fa5"/>
+
+  <!-- Orange Outer Light Bulb outline -->
+  <path d="M245 80 C150 80 80 155 80 250 C80 310 112 360 155 395 L155 415 C155 425 165 435 175 435 L245 435 C255 435 265 425 265 415 L265 395 C275 387 285 378 293 368 C278 335 270 295 270 250 C270 155 255 105 245 80 Z" fill="none" stroke="#f0881f" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- Orange Bulb Base / Screws -->
+  <path d="M165 440 L255 440" stroke="#1d6fa5" stroke-width="20" stroke-linecap="round"/>
+  <path d="M175 470 L245 470" stroke="#1d6fa5" stroke-width="20" stroke-linecap="round"/>
+  <path d="M195 500 L225 500" stroke="#1d6fa5" stroke-width="16" stroke-linecap="round"/>
+
+  <!-- Orange Gear Icon inside the Bulb -->
+  <g fill="#f0881f">
+    <!-- Center circle of gear -->
+    <circle cx="215" cy="245" r="48"/>
+    <!-- Center hole inside gear -->
+    <circle cx="215" cy="245" r="22" fill="#ffffff"/>
+    <!-- Gear Teeth -->
+    <rect x="203" y="172" width="24" height="24" rx="5" />
+    <rect x="203" y="294" width="24" height="24" rx="5" />
+    <rect x="142" y="233" width="24" height="24" rx="5" />
+    <rect x="264" y="233" width="24" height="24" rx="5" />
+    <rect x="160" y="190" width="24" height="24" rx="5" transform="rotate(45 172 202)" />
+    <rect x="246" y="276" width="24" height="24" rx="5" transform="rotate(45 258 288)" />
+    <rect x="160" y="276" width="24" height="24" rx="5" transform="rotate(-45 172 288)" />
+    <rect x="246" y="190" width="24" height="24" rx="5" transform="rotate(-45 258 202)" />
+    <!-- Gear central stem to base -->
+    <path d="M207 293 L207 390 L223 390 L223 293 Z"/>
+  </g>
+</svg>
