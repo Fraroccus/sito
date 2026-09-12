@@ -43,7 +43,7 @@ export default function Hero({ onExploreCourses, onContactClick }: HeroProps) {
   return (
     <section 
       id="presentazione" 
-      className="relative min-h-screen pt-28 pb-16 flex flex-col justify-center bg-slate-50 overflow-hidden"
+      className="relative min-h-screen pt-28 pb-16 flex flex-col justify-center bg-slate-50 overflow-hidden scroll-mt-20"
     >
       {/* Decorative Blur Ambient elements */}
       <div className="absolute -top-10 -left-10 w-96 h-96 bg-indigo-100 rounded-full blur-3xl opacity-60 pointer-events-none" />

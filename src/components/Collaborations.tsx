@@ -149,7 +149,7 @@ export default function Collaborations({
   // If there are no partners yet, show a clean state
   if (baseItems.length === 0) {
     return (
-      <section id="collaborazioni" className="py-20 bg-white border-y border-slate-200">
+      <section id="collaborazioni" className="py-20 bg-white border-y border-slate-200 scroll-mt-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           
           {/* Section Header */}
@@ -209,7 +209,7 @@ export default function Collaborations({
   }
 
   return (
-    <section id="collaborazioni" className="py-20 bg-white border-y border-slate-200">
+    <section id="collaborazioni" className="py-20 bg-white border-y border-slate-200 scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}

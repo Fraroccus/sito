@@ -77,7 +77,7 @@ export default function ContactForm() {
   };
 
   return (
-    <section id="contatti" className="py-24 bg-white border-t border-slate-200">
+    <section id="contatti" className="py-24 bg-white border-t border-slate-200 scroll-mt-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">

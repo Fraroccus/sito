@@ -293,7 +293,7 @@ export default function VideoInterview({ data, isAdmin, onUpdate }: VideoIntervi
   };
 
   return (
-    <section id="video-intervista" className="py-20 bg-white border-t border-slate-200">
+    <section id="video-intervista" className="py-20 bg-white border-t border-slate-200 scroll-mt-20">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Section Header */}
