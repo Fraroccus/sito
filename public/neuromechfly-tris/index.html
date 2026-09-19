@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<html lang="it" data-theme="light">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <base href="/neuromechfly-tris/">
@@ -7,49 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{
-    --bg:#020617;
-    --surface:#0f172a;
-    --surface-2:#1e293b;
-    --surface-3:#334155;
-    --line:#334155;
-    --text:#f8fafc;
-    --muted:#94a3b8;
-    --muted-2:#64748b;
-    --reward:#49d6ac;
-    --reward-dim:#2a5348;
-    --punish:#f0705f;
-    --punish-dim:#54322d;
-    --accent:#e8b34d;
-    --accent-dim:#4a3c1f;
-    --shadow: 0 20px 60px -30px rgba(0,0,0,0.7);
-    --brain-bg-1:#233033;
-    --brain-bg-2:#1b2427;
-  }
-  @media (prefers-color-scheme: light){
-    :root:not([data-theme="dark"]){
-      --bg:#f8fafc;
-      --surface:#ffffff;
-      --surface-2:#f1f5f9;
-      --surface-3:#e2e8f0;
-      --line:#e2e8f0;
-      --text:#0f172a;
-      --muted:#475569;
-      --muted-2:#94a3b8;
-      --reward:#1f9b76;
-      --reward-dim:#cdeee1;
-      --punish:#c94a38;
-      --punish-dim:#f6d9d2;
-      --accent:#a5720f;
-      --accent-dim:#f1e1bb;
-      --shadow: 0 20px 50px -32px rgba(15,23,42,0.25);
-      --cell-bg: rgba(241,245,249,0.65);
-      --cell-bg-hover: rgba(226,232,240,0.85);
-      --brain-bg-1:#ffffff;
-      --brain-bg-2:#f4f3ef;
-    }
-  }
-  :root[data-theme="light"]{
+  :root,
+  :root[data-theme="light"],
+  :root[data-theme="dark"]{
     --bg:#f8fafc;
     --surface:#ffffff;
     --surface-2:#f1f5f9;
@@ -69,27 +30,6 @@
     --cell-bg-hover: rgba(226,232,240,0.85);
     --brain-bg-1:#ffffff;
     --brain-bg-2:#f4f3ef;
-  }
-  :root[data-theme="dark"]{
-    --bg:#020617;
-    --surface:#0f172a;
-    --surface-2:#1e293b;
-    --surface-3:#334155;
-    --line:#334155;
-    --text:#f8fafc;
-    --muted:#94a3b8;
-    --muted-2:#64748b;
-    --reward:#49d6ac;
-    --reward-dim:#2a5348;
-    --punish:#f0705f;
-    --punish-dim:#54322d;
-    --accent:#e8b34d;
-    --accent-dim:#4a3c1f;
-    --shadow: 0 20px 60px -30px rgba(0,0,0,0.7);
-    --cell-bg: rgba(30,41,59,0.4);
-    --cell-bg-hover: rgba(51,65,85,0.6);
-    --brain-bg-1:#233033;
-    --brain-bg-2:#1b2427;
   }
 
   *{box-sizing:border-box;}
@@ -122,23 +62,40 @@
   }
   .provenance b{color:var(--text); font-weight:600;}
 
+  .grid-wrap{
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px;
+  }
   .grid{
     display:grid;
     grid-template-columns: minmax(280px, 400px) 1fr;
     gap:20px;
     align-items:start;
+    transition: all 0.2s ease;
   }
   @media (max-width: 880px){
     body{
       padding: 16px 12px 48px;
     }
-    .grid{
+    .grid:not(.force-side-by-side){
       grid-template-columns: 1fr;
       gap: 16px;
     }
     .card{
       padding: 16px;
     }
+  }
+
+  /* Modalità forzate dallo switch */
+  .grid.force-stacked{
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+  }
+  .grid.force-side-by-side{
+    grid-template-columns: minmax(320px, 400px) minmax(360px, 1fr) !important;
+    min-width: 760px !important;
   }
 
   .card{
@@ -398,6 +355,9 @@
       <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
         <a href="/" class="how-btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">← Torna al Portfolio</a>
         <button id="howItWorksBtn" class="how-btn">Come funziona?</button>
+        <button id="layoutToggleBtn" class="how-btn" style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;" title="Cambia disposizione: In colonna (mobile) o Affiancata (desktop)">
+          <span id="layoutToggleIcon">📱</span> <span id="layoutToggleText">Vista: In colonna</span>
+        </button>
       </div>
     </div>
     <div class="provenance mono">
@@ -408,7 +368,9 @@
     </div>
   </header>
 
-  <div class="grid">
+  <div class="grid-wrap">
+    <div id="scrollHint" class="mono" style="display:none; font-size:0.72rem; color:var(--muted-2); margin-top:-6px; margin-bottom:10px; text-align:right;">⇄ Scorri orizzontalmente per vedere entrambi i pannelli</div>
+    <div class="grid" id="mainGrid">
     <div>
       <div class="card" style="position:relative;">
         <div class="flash" id="flash"></div>
@@ -471,6 +433,7 @@
         <div class="mbon-list" id="mbonList"></div>
       </div>
     </div>
+  </div>
   </div>
 
   <div class="modal-overlay" id="howModalOverlay" hidden>
@@ -2216,6 +2179,53 @@ function makeRoomEnvironment(renderer){
   }
   wireModal("howModalOverlay", "howItWorksBtn", "howModalClose");
   wireModal("colorModalOverlay", "whyColorBtn", "colorModalClose");
+
+  // Layout switch (Mobile / Browser)
+  var layoutToggleBtn = document.getElementById("layoutToggleBtn");
+  var layoutToggleIcon = document.getElementById("layoutToggleIcon");
+  var layoutToggleText = document.getElementById("layoutToggleText");
+  var mainGrid = document.getElementById("mainGrid");
+  var scrollHint = document.getElementById("scrollHint");
+
+  var savedLayout = sessionStorage.getItem("nmf_tris_layout");
+  var currentLayout = savedLayout || (window.innerWidth <= 880 ? "mobile" : "desktop");
+
+  function updateLayoutUI(mode){
+    currentLayout = mode;
+    sessionStorage.setItem("nmf_tris_layout", mode);
+    if (!mainGrid) return;
+    if (mode === "mobile"){
+      mainGrid.classList.add("force-stacked");
+      mainGrid.classList.remove("force-side-by-side");
+      if (layoutToggleIcon) layoutToggleIcon.textContent = "📱";
+      if (layoutToggleText) layoutToggleText.textContent = "Vista: In colonna";
+      if (layoutToggleBtn) layoutToggleBtn.title = "Visualizzazione a colonna singola (mobile). Clicca per passare alla visualizzazione affiancata (desktop).";
+      if (scrollHint) scrollHint.style.display = "none";
+    } else {
+      mainGrid.classList.add("force-side-by-side");
+      mainGrid.classList.remove("force-stacked");
+      if (layoutToggleIcon) layoutToggleIcon.textContent = "💻";
+      if (layoutToggleText) layoutToggleText.textContent = "Vista: Affiancata";
+      if (layoutToggleBtn) layoutToggleBtn.title = "Visualizzazione affiancata (desktop). Clicca per passare alla visualizzazione a colonna singola (mobile).";
+      if (scrollHint) scrollHint.style.display = (window.innerWidth <= 780) ? "block" : "none";
+    }
+    setTimeout(function(){
+      window.dispatchEvent(new Event("resize"));
+    }, 60);
+  }
+
+  if (layoutToggleBtn && mainGrid){
+    updateLayoutUI(currentLayout);
+    layoutToggleBtn.addEventListener("click", function(){
+      var next = (currentLayout === "mobile") ? "desktop" : "mobile";
+      updateLayoutUI(next);
+    });
+    window.addEventListener("resize", function(){
+      if (currentLayout === "desktop" && scrollHint){
+        scrollHint.style.display = (window.innerWidth <= 780) ? "block" : "none";
+      }
+    });
+  }
 
   function start(){
     loadCircuit(function(){
