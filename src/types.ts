@@ -46,3 +46,29 @@ export interface VideoInterviewData {
   posterImage?: string;
 }
 
+export type ProjectCategory = 
+  | 'Tutti'
+  | 'Intelligenza Artificiale'
+  | 'Didattica & STEM'
+  | 'Robotica & Coding'
+  | 'Divulgazione & Eventi'
+  | 'Aziende & Formazione'
+  | 'Altro';
+
+export interface Progetto {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  image: string; // URL or base64 thumbnail
+  gradientIndex?: number; // Optional index for abstract gradient background presets
+  linkUrl?: string; // Optional external link or demo
+  linkText?: string; // Optional custom button text (e.g. "Vedi progetto")
+  githubUrl?: string; // Optional GitHub repository URL
+  tags?: string[]; // Key highlights or tags
+  period?: string; // Optional timeframe/year (e.g. "2024 - In corso")
+  client?: string; // Optional partner, school or client
+  isExample?: boolean;
+  created_at?: string;
+}
+

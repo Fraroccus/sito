@@ -8,11 +8,12 @@ import Navbar from './components/Navbar';
 import Hero from './components/Hero';
 import Collaborations from './components/Collaborations';
 import Courses from './components/Courses';
+import Progetti from './components/Progetti';
 import ContactForm from './components/ContactForm';
 import VideoInterview from './components/VideoInterview';
 import AdminLoginModal from './components/AdminLoginModal';
-import { Percorso, Collaboration, VideoInterviewData } from './types';
-import { INITIAL_PERCORSI, DEFAULT_COLLABORATIONS, DEFAULT_VIDEO_INTERVIEW, normalizeVideoData } from './data';
+import { Percorso, Collaboration, VideoInterviewData, Progetto } from './types';
+import { INITIAL_PERCORSI, DEFAULT_COLLABORATIONS, DEFAULT_VIDEO_INTERVIEW, INITIAL_PROGETTI, normalizeVideoData } from './data';
 import {
   isSupabaseConfigured,
   fetchPercorsiFromSupabase,
@@ -86,6 +87,22 @@ export default function App() {
     return filterRealCollaborations(DEFAULT_COLLABORATIONS);
   });
 
+  // Load and store progetti data in local state with fallback
+  const [progetti, setProgetti] = useState<Progetto[]>(() => {
+    const saved = localStorage.getItem('francesco_rocco_progetti');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Failed to parse progetti from localStorage', e);
+      }
+    }
+    return INITIAL_PROGETTI;
+  });
+
   // Load and store video interview data in local state with fallback
   const [videoInterview, setVideoInterview] = useState<VideoInterviewData>(() => {
     const saved = localStorage.getItem('francesco_rocco_video_interview');
@@ -105,6 +122,7 @@ export default function App() {
   // Keep refs up-to-date to avoid stale closures in sync calls
   const percorsiRef = React.useRef(percorsi);
   const collaborationsRef = React.useRef(collaborations);
+  const progettiRef = React.useRef(progetti);
   const videoInterviewRef = React.useRef(videoInterview);
 
   React.useEffect(() => {
@@ -116,6 +134,10 @@ export default function App() {
   }, [collaborations]);
 
   React.useEffect(() => {
+    progettiRef.current = progetti;
+  }, [progetti]);
+
+  React.useEffect(() => {
     videoInterviewRef.current = videoInterview;
   }, [videoInterview]);
 
@@ -123,9 +145,11 @@ export default function App() {
   const syncData = async (
     updatedPercorsi: Percorso[], 
     updatedCollabs: Collaboration[], 
-    updatedVideo?: VideoInterviewData
+    updatedVideo?: VideoInterviewData,
+    updatedProgetti?: Progetto[]
   ) => {
     const currentVideo = updatedVideo || videoInterviewRef.current;
+    const currentProgetti = updatedProgetti || progettiRef.current;
     const cleanPercorsi = filterRealPercorsi(updatedPercorsi);
     const cleanCollabs = filterRealCollaborations(updatedCollabs);
 
@@ -143,6 +167,7 @@ export default function App() {
     const payload = JSON.stringify({ 
       percorsi: cleanPercorsi, 
       collaborations: cleanCollabs,
+      progetti: currentProgetti,
       videoInterview: currentVideo
     });
 
@@ -167,6 +192,40 @@ export default function App() {
 
     sendPayload();
   };
+
+const mergeProgetti = (serverP: Progetto[], localP: Progetto[]): Progetto[] => {
+  const cleanServerP = Array.isArray(serverP) ? serverP : [];
+  const cleanLocalP = Array.isArray(localP) ? localP : [];
+
+  if (cleanServerP.length === 0) return cleanLocalP;
+  if (cleanLocalP.length === 0) return cleanServerP;
+
+  const serverMap = new Map<string, Progetto>(cleanServerP.map(p => [p.id, p]));
+  const result: Progetto[] = [];
+  const processedIds = new Set<string>();
+
+  for (const lp of cleanLocalP) {
+    const sp = serverMap.get(lp.id);
+    if (sp) {
+      result.push({
+        ...sp,
+        image: sp.image || lp.image || '',
+        gradientIndex: sp.gradientIndex ?? lp.gradientIndex ?? 0
+      });
+    } else {
+      result.push(lp);
+    }
+    processedIds.add(lp.id);
+  }
+
+  for (const sp of cleanServerP) {
+    if (!processedIds.has(sp.id)) {
+      result.push(sp);
+    }
+  }
+
+  return result;
+};
 
 // Helper to merge server and local cache data gracefully without losing images or custom ordering
 const mergePercorsi = (serverP: Percorso[], localP: Percorso[]): Percorso[] => {
@@ -246,13 +305,18 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
       // Read local cache first for smart merge
       const savedPercorsiRaw = localStorage.getItem('francesco_rocco_percorsi');
       const savedCollabsRaw = localStorage.getItem('francesco_rocco_collaborations');
+      const savedProgettiRaw = localStorage.getItem('francesco_rocco_progetti');
       let localP: Percorso[] = [];
       let localC: Collaboration[] = [];
+      let localProj: Progetto[] = [];
       if (savedPercorsiRaw) {
         try { localP = filterRealPercorsi(JSON.parse(savedPercorsiRaw) || []); } catch(e) {}
       }
       if (savedCollabsRaw) {
         try { localC = filterRealCollaborations(JSON.parse(savedCollabsRaw) || []); } catch(e) {}
+      }
+      if (savedProgettiRaw) {
+        try { localProj = JSON.parse(savedProgettiRaw) || []; } catch(e) {}
       }
 
       // 1. Try Supabase first if configured
@@ -319,6 +383,7 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
 
           const serverP = data.percorsi || [];
           const serverC = data.collaborations || [];
+          const serverProj = data.progetti || [];
 
           if (serverP.length > 0 || localP.length > 0) {
             const mergedP = mergePercorsi(serverP, localP);
@@ -349,6 +414,21 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
             }
           }
 
+          if (serverProj.length > 0 || localProj.length > 0) {
+            const mergedProj = mergeProgetti(serverProj, localProj);
+            setProgetti(mergedProj);
+            progettiRef.current = mergedProj;
+            loadedFromBackend = true;
+            try {
+              localStorage.setItem('francesco_rocco_progetti', JSON.stringify(mergedProj));
+            } catch (e) {
+              try {
+                const lightweightProj = mergedProj.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
+                localStorage.setItem('francesco_rocco_progetti', JSON.stringify(lightweightProj));
+              } catch (e2) {}
+            }
+          }
+
           if (data.videoInterview && typeof data.videoInterview === 'object') {
             const serverVideo = normalizeVideoData(data.videoInterview);
             setVideoInterview(serverVideo);
@@ -362,8 +442,9 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
             // Only push back if local storage had additional entries not present on server
             const hasNewLocalP = localP.some(lp => !serverP.some((sp: Percorso) => sp.id === lp.id));
             const hasNewLocalC = localC.some(lc => !serverC.some((sc: Collaboration) => sc.id === lc.id));
-            if (hasNewLocalP || hasNewLocalC) {
-              syncData(percorsiRef.current, collaborationsRef.current, videoInterviewRef.current);
+            const hasNewLocalProj = localProj.some(lproj => !serverProj.some((sproj: Progetto) => sproj.id === lproj.id));
+            if (hasNewLocalP || hasNewLocalC || hasNewLocalProj) {
+              syncData(percorsiRef.current, collaborationsRef.current, videoInterviewRef.current, progettiRef.current);
             }
             return;
           }
@@ -387,6 +468,14 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
       } else {
         setCollaborations(DEFAULT_COLLABORATIONS);
         collaborationsRef.current = DEFAULT_COLLABORATIONS;
+      }
+
+      if (localProj.length > 0) {
+        setProgetti(localProj);
+        progettiRef.current = localProj;
+      } else {
+        setProgetti(INITIAL_PROGETTI);
+        progettiRef.current = INITIAL_PROGETTI;
       }
     };
     fetchInitialData();
@@ -469,6 +558,37 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
     saveCollabsToStorage(updated);
   };
 
+  // Progetti handlers
+  const saveProgettiToStorage = (updatedProgetti: Progetto[]) => {
+    progettiRef.current = updatedProgetti;
+    setProgetti(updatedProgetti);
+    try {
+      localStorage.setItem('francesco_rocco_progetti', JSON.stringify(updatedProgetti));
+    } catch (e) {
+      console.warn('Impossibile salvare i progetti in localStorage (quota superata):', e);
+      try {
+        const lightweightProj = updatedProgetti.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
+        localStorage.setItem('francesco_rocco_progetti', JSON.stringify(lightweightProj));
+      } catch (e2) {}
+    }
+    syncData(percorsiRef.current, collaborationsRef.current, videoInterviewRef.current, updatedProgetti);
+  };
+
+  const handleAddProgetto = (newProgetto: Progetto) => {
+    const updated = [newProgetto, ...progetti];
+    saveProgettiToStorage(updated);
+  };
+
+  const handleUpdateProgetto = (updatedProgetto: Progetto) => {
+    const updated = progetti.map(item => item.id === updatedProgetto.id ? updatedProgetto : item);
+    saveProgettiToStorage(updated);
+  };
+
+  const handleDeleteProgetto = (id: string) => {
+    const updated = progetti.filter(item => item.id !== id);
+    saveProgettiToStorage(updated);
+  };
+
   const handleUpdateVideoInterview = (updated: VideoInterviewData) => {
     videoInterviewRef.current = updated;
     setVideoInterview(updated);
@@ -477,12 +597,12 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
     } catch (e) {
       console.warn('Impossibile salvare la videointervista in localStorage:', e);
     }
-    syncData(percorsiRef.current, collaborationsRef.current, updated);
+    syncData(percorsiRef.current, collaborationsRef.current, updated, progettiRef.current);
   };
 
   // Local file backup download
   const handleExportBackup = () => {
-    const dataStr = JSON.stringify({ percorsi, collaborations, videoInterview }, null, 2);
+    const dataStr = JSON.stringify({ percorsi, collaborations, progetti, videoInterview }, null, 2);
     const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
     const exportFileDefaultName = `backup_formatore_ai_${new Date().toISOString().split('T')[0]}.json`;
     
@@ -500,20 +620,25 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
       fileReader.onload = (event) => {
         try {
           const parsed = JSON.parse(event.target?.result as string);
-          if (parsed && (parsed.percorsi || parsed.collaborations || parsed.videoInterview)) {
+          if (parsed && (parsed.percorsi || parsed.collaborations || parsed.progetti || parsed.videoInterview)) {
             const importedPercorsi = parsed.percorsi || [];
             const importedCollabs = parsed.collaborations || [];
+            const importedProgetti = parsed.progetti || [];
             const importedVideo = parsed.videoInterview || videoInterviewRef.current;
             
             setPercorsi(importedPercorsi);
             setCollaborations(importedCollabs);
+            if (importedProgetti.length > 0) {
+              setProgetti(importedProgetti);
+              localStorage.setItem('francesco_rocco_progetti', JSON.stringify(importedProgetti));
+            }
             setVideoInterview(importedVideo);
             
             localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(importedPercorsi));
             localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(importedCollabs));
             localStorage.setItem('francesco_rocco_video_interview', JSON.stringify(importedVideo));
             
-            syncData(importedPercorsi, importedCollabs, importedVideo);
+            syncData(importedPercorsi, importedCollabs, importedVideo, importedProgetti.length > 0 ? importedProgetti : undefined);
             alert("Backup ripristinato con successo sia localmente che sul database!");
           } else {
             alert("Il file non sembra essere un formato di backup valido.");
@@ -656,6 +781,16 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
           onReorderCollabs={saveCollabsToStorage}
         />
 
+        {/* Section: Progetti Realizzati & Attività */}
+        <Progetti 
+          progetti={progetti}
+          isAdmin={isAdmin}
+          onAddProgetto={handleAddProgetto}
+          onUpdateProgetto={handleUpdateProgetto}
+          onDeleteProgetto={handleDeleteProgetto}
+          onReorderProgetti={saveProgettiToStorage}
+        />
+
         {/* Section 5: Video Interview Section (Google Drive 657MB player & media) */}
         <VideoInterview 
           data={videoInterview}
@@ -701,6 +836,12 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
                   className="text-left hover:text-white transition-colors cursor-pointer"
                 >
                   Collaborazioni
+                </button>
+                <button 
+                  onClick={() => document.getElementById('progetti')?.scrollIntoView({ behavior: 'smooth' })}
+                  className="text-left hover:text-white transition-colors cursor-pointer"
+                >
+                  Progetti
                 </button>
                 <button 
                   onClick={() => document.getElementById('percorsi')?.scrollIntoView({ behavior: 'smooth' })}

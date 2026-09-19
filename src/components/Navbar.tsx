@@ -57,6 +57,7 @@ export default function Navbar({ isAdmin, onToggleAdmin }: NavbarProps) {
     { label: 'Percorsi Formativi', target: 'percorsi' },
     { label: 'Contatti', target: 'contatti' },
     { label: 'Collaborazioni', target: 'collaborazioni' },
+    { label: 'Progetti', target: 'progetti' },
     { label: 'Intervista Video', target: 'video-intervista' },
   ];
 

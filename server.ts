@@ -43,6 +43,27 @@ async function startServer() {
   // Static route for uploaded videos and assets
   app.use('/uploads', express.static(uploadsDir));
 
+  // Static routes for interactive project: NeuroMechFly Tris (MoscaTris)
+  const neuromechflyDir = path.join(process.cwd(), 'public', 'neuromechfly-tris');
+  app.use('/neuromechfly-tris', express.static(neuromechflyDir, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.wasm')) {
+        res.setHeader('Content-Type', 'application/wasm');
+      } else if (filePath.endsWith('.glb')) {
+        res.setHeader('Content-Type', 'model/gltf-binary');
+      }
+    }
+  }));
+  app.use('/moscatris', express.static(neuromechflyDir, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.wasm')) {
+        res.setHeader('Content-Type', 'application/wasm');
+      } else if (filePath.endsWith('.glb')) {
+        res.setHeader('Content-Type', 'model/gltf-binary');
+      }
+    }
+  }));
+
   const DB_FILE = path.join(process.cwd(), 'db.json');
 
   // Helper to load db
@@ -85,6 +106,7 @@ async function startServer() {
     const defaults = {
       percorsi: [],
       collaborations: [],
+      progetti: [],
       videoInterview: DEFAULT_VIDEO
     };
     fs.writeFileSync(DB_FILE, JSON.stringify(defaults, null, 2), 'utf-8');
@@ -100,7 +122,7 @@ async function startServer() {
   // API Route - Save all data
   app.post("/api/data", (req, res) => {
     try {
-      const { percorsi, collaborations, videoInterview } = req.body;
+      const { percorsi, collaborations, videoInterview, progetti } = req.body;
       let cleanVideo = videoInterview || null;
       if (cleanVideo && typeof cleanVideo === 'object') {
         if (!cleanVideo.title || cleanVideo.title === "StoryTime • Radio Canale Italia: Intervista a Francesco Rocco" || cleanVideo.title.includes("Intervista a Francesco Rocco")) {
@@ -115,6 +137,7 @@ async function startServer() {
       const data = {
         percorsi: percorsi || [],
         collaborations: collaborations || [],
+        progetti: progetti || [],
         videoInterview: cleanVideo
       };
       fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), 'utf-8');

@@ -1,0 +1,2186 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Tris nel Corpo Fungiforme</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#020617;
+    --surface:#0f172a;
+    --surface-2:#1e293b;
+    --surface-3:#334155;
+    --line:#334155;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --muted-2:#64748b;
+    --reward:#49d6ac;
+    --reward-dim:#2a5348;
+    --punish:#f0705f;
+    --punish-dim:#54322d;
+    --accent:#e8b34d;
+    --accent-dim:#4a3c1f;
+    --shadow: 0 20px 60px -30px rgba(0,0,0,0.7);
+    --brain-bg-1:#233033;
+    --brain-bg-2:#1b2427;
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg:#f8fafc;
+      --surface:#ffffff;
+      --surface-2:#f1f5f9;
+      --surface-3:#e2e8f0;
+      --line:#e2e8f0;
+      --text:#0f172a;
+      --muted:#475569;
+      --muted-2:#94a3b8;
+      --reward:#1f9b76;
+      --reward-dim:#cdeee1;
+      --punish:#c94a38;
+      --punish-dim:#f6d9d2;
+      --accent:#a5720f;
+      --accent-dim:#f1e1bb;
+      --shadow: 0 20px 50px -32px rgba(15,23,42,0.25);
+      --cell-bg: rgba(241,245,249,0.65);
+      --cell-bg-hover: rgba(226,232,240,0.85);
+      --brain-bg-1:#ffffff;
+      --brain-bg-2:#f4f3ef;
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#f8fafc;
+    --surface:#ffffff;
+    --surface-2:#f1f5f9;
+    --surface-3:#e2e8f0;
+    --line:#e2e8f0;
+    --text:#0f172a;
+    --muted:#475569;
+    --muted-2:#94a3b8;
+    --reward:#1f9b76;
+    --reward-dim:#cdeee1;
+    --punish:#c94a38;
+    --punish-dim:#f6d9d2;
+    --accent:#a5720f;
+    --accent-dim:#f1e1bb;
+    --shadow: 0 20px 50px -32px rgba(15,23,42,0.25);
+    --cell-bg: rgba(241,245,249,0.65);
+    --cell-bg-hover: rgba(226,232,240,0.85);
+    --brain-bg-1:#ffffff;
+    --brain-bg-2:#f4f3ef;
+  }
+  :root[data-theme="dark"]{
+    --bg:#020617;
+    --surface:#0f172a;
+    --surface-2:#1e293b;
+    --surface-3:#334155;
+    --line:#334155;
+    --text:#f8fafc;
+    --muted:#94a3b8;
+    --muted-2:#64748b;
+    --reward:#49d6ac;
+    --reward-dim:#2a5348;
+    --punish:#f0705f;
+    --punish-dim:#54322d;
+    --accent:#e8b34d;
+    --accent-dim:#4a3c1f;
+    --shadow: 0 20px 60px -30px rgba(0,0,0,0.7);
+    --cell-bg: rgba(30,41,59,0.4);
+    --cell-bg-hover: rgba(51,65,85,0.6);
+    --brain-bg-1:#233033;
+    --brain-bg-2:#1b2427;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'IBM Plex Sans', system-ui, sans-serif;
+    padding: 28px 20px 60px;
+  }
+  .wrap{max-width:1040px;margin:0 auto;}
+  .mono{font-family:'IBM Plex Mono', ui-monospace, monospace;}
+
+  header{margin-bottom:22px;}
+  h1{
+    font-family:'IBM Plex Mono','IBM Plex Sans',monospace;
+    font-weight:700;
+    font-size:clamp(1.5rem, 1.1rem + 1.6vw, 2.15rem);
+    letter-spacing:-0.01em;
+    margin:0 0 6px;
+    text-wrap:balance;
+  }
+  .provenance{
+    color:var(--muted);
+    font-size:0.8rem;
+    letter-spacing:0.01em;
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px 14px;
+  }
+  .provenance b{color:var(--text); font-weight:600;}
+
+  .grid{
+    display:grid;
+    grid-template-columns: minmax(280px, 400px) 1fr;
+    gap:20px;
+    align-items:start;
+  }
+  @media (max-width: 760px){ .grid{grid-template-columns: 1fr;} }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:20px;
+    box-shadow:var(--shadow);
+  }
+  .card + .card{margin-top:16px;}
+  .card h2{
+    font-size:0.72rem;
+    text-transform:uppercase;
+    letter-spacing:0.09em;
+    color:var(--muted);
+    margin:0 0 14px;
+    font-weight:600;
+  }
+
+  /* ---- board ---- */
+  .status-row{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px; min-height:28px;
+  }
+  .turn-pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.78rem;
+    padding:4px 10px;
+    border-radius:999px;
+    border:1px solid var(--line);
+    color:var(--muted);
+    transition:all .25s ease;
+  }
+  .turn-pill.you{color:var(--accent); border-color:var(--accent-dim); background:var(--accent-dim);}
+  .turn-pill.fly{color:var(--reward); border-color:var(--reward-dim); background:var(--reward-dim);}
+
+  .board-stage{
+    position:relative;
+    aspect-ratio:1;
+    margin-bottom:8px;
+    border-radius:10px;
+    overflow:hidden;
+    background: radial-gradient(ellipse at 50% 15%, var(--surface-3), var(--surface-2) 85%);
+    border:1px solid var(--line);
+  }
+  .board{
+    position:relative;
+    z-index:1;
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    grid-template-rows:repeat(3,1fr);
+    gap:8px;
+    height:100%;
+  }
+  .cell{
+    background:var(--cell-bg);
+    backdrop-filter: blur(0.5px);
+    border:1px solid var(--line);
+    border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    font-family:'IBM Plex Mono',monospace;
+    font-size:clamp(1.8rem, 5vw, 2.6rem);
+    font-weight:600;
+    cursor:pointer;
+    color:var(--text);
+    transition:background .15s ease, transform .1s ease;
+    user-select:none;
+  }
+  .cell:hover:not(.filled):not(.disabled){background:var(--cell-bg-hover);}
+  .cell.filled, .cell.disabled{cursor:default;}
+  .cell.you{color:var(--accent);}
+  .cell.fly{color:var(--reward);}
+  .cell.pop{animation:pop .22s ease;}
+  @keyframes pop{ from{transform:scale(0.55);} to{transform:scale(1);} }
+  .cell.win{box-shadow: inset 0 0 0 2px var(--accent);}
+
+  .msg{
+    min-height:20px;
+    font-size:0.88rem;
+    color:var(--muted);
+    margin-bottom:14px;
+  }
+  .msg.win{color:var(--accent);}
+  .msg.lose{color:var(--reward);}
+  .msg.draw{color:var(--muted-2);}
+
+  .controls{display:flex; flex-direction:column; gap:10px;}
+  .row{display:flex; align-items:center; gap:10px;}
+  button{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:0.8rem;
+    font-weight:500;
+    background:var(--surface-3);
+    color:var(--text);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:9px 14px;
+    cursor:pointer;
+    transition:border-color .15s ease;
+  }
+  button:hover{border-color:var(--muted-2);}
+  button.primary{background:var(--accent-dim); border-color:var(--accent); color:var(--accent);}
+
+  input[type=range]{
+    flex:1; accent-color:var(--accent); height:4px;
+  }
+  .slider-label{
+    font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em;
+    display:flex; justify-content:space-between;
+  }
+
+  .scoreboard{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:16px;
+  }
+  .score-tile{
+    background:var(--surface-2); border:1px solid var(--line); border-radius:10px;
+    padding:10px 8px; text-align:center;
+  }
+  .score-tile .n{
+    font-family:'IBM Plex Mono',monospace; font-size:1.4rem; font-weight:700;
+    font-variant-numeric:tabular-nums;
+  }
+  .score-tile .l{font-size:0.66rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-top:2px;}
+  .score-tile.you .n{color:var(--accent);}
+  .score-tile.fly .n{color:var(--reward);}
+
+  /* ---- brain panel ---- */
+  .why-box{
+    background:var(--surface-2);
+    border:1px solid var(--line);
+    border-radius:10px;
+    padding:14px 16px;
+    margin-bottom:14px;
+    min-height:64px;
+  }
+  .why-label{
+    display:block;
+    font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em;
+    margin-bottom:6px;
+  }
+  .why-text{
+    margin:0; font-size:0.86rem; line-height:1.55; color:var(--text);
+  }
+
+  .brain3d-wrap{
+    position:relative;
+    aspect-ratio: 4 / 3;
+    background: radial-gradient(ellipse at 50% 30%, var(--brain-bg-1), var(--brain-bg-2) 75%);
+    border:1px solid var(--line);
+    border-radius:10px;
+    overflow:hidden;
+    margin-bottom:14px;
+    cursor:grab;
+  }
+  .brain3d-wrap:active{cursor:grabbing;}
+  .brain3d-wrap canvas{display:block; width:100%; height:100%;}
+  .brain3d-hint{
+    position:absolute; left:10px; bottom:8px;
+    font-size:0.66rem; color:var(--muted-2);
+    font-family:'IBM Plex Mono',monospace;
+    letter-spacing:0.03em;
+    pointer-events:none;
+  }
+  .brain3d-loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:0.75rem; color:var(--muted); font-family:'IBM Plex Mono',monospace;
+    text-align:center; padding:0 16px;
+  }
+
+  .arena-ground{
+    position:absolute; inset:0; z-index:0;
+  }
+  .arena-fly{
+    position:absolute; inset:0; z-index:2;
+    pointer-events:none; /* la mosca e' solo visiva: i click devono arrivare alle celle sotto */
+  }
+  .arena-ground canvas, .arena-fly canvas{display:block; width:100%; height:100%;}
+  .arena3d-loading{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    background:var(--surface-2);
+    font-size:0.75rem; color:var(--muted); font-family:'IBM Plex Mono',monospace;
+    text-align:center; padding:0 20px;
+    pointer-events:auto;
+  }
+
+  .mbon-list{display:flex; flex-direction:column; gap:7px;}
+  .mbon-row{display:grid; grid-template-columns: 110px 1fr 46px; align-items:center; gap:10px;}
+  .mbon-name{
+    font-family:'IBM Plex Mono',monospace; font-size:0.72rem; color:var(--muted);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .mbon-track{
+    position:relative; height:10px; background:var(--surface-2); border-radius:5px; overflow:hidden;
+  }
+  .mbon-fill{
+    position:absolute; top:0; bottom:0; border-radius:5px;
+    transition: width .45s ease, background .3s ease;
+  }
+  .mbon-val{
+    font-family:'IBM Plex Mono',monospace; font-size:0.7rem; color:var(--muted-2); text-align:right;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .flash{
+    position:absolute; inset:0; pointer-events:none; opacity:0; border-radius:14px;
+  }
+  .flash.show{animation:flashpulse .9s ease;}
+  @keyframes flashpulse{
+    0%{opacity:0;} 18%{opacity:0.55;} 100%{opacity:0;}
+  }
+
+  .header-top{
+    display:flex; flex-wrap:wrap; align-items:flex-start; justify-content:space-between; gap:10px 16px;
+  }
+  .how-btn{
+    flex-shrink:0;
+    font-size:0.76rem;
+    white-space:nowrap;
+  }
+
+  .modal-overlay{
+    position:fixed; inset:0; z-index:100;
+    background:rgba(10,14,15,0.55);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .modal-overlay[hidden]{display:none;} /* piu' specifico di .modal-overlay{display:flex}: senza,
+    l'attributo hidden da solo non basterebbe a nascondere l'overlay in un contesto senza il reset
+    CSS che l'Artifact aggiunge in pubblicazione */
+  .modal-card{
+    position:relative;
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    box-shadow:var(--shadow);
+    max-width:640px; width:100%; max-height:82vh; overflow-y:auto;
+    padding:26px 24px 22px;
+  }
+  .modal-card h2{
+    font-size:0.98rem; margin:0 0 14px; padding-right:30px; color:var(--text);
+  }
+  .modal-body{
+    color:var(--muted-2); font-size:0.82rem; line-height:1.6;
+  }
+  .modal-body b{color:var(--muted);}
+  .modal-close{
+    position:absolute; top:12px; right:12px;
+    width:30px; height:30px; padding:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.2rem; line-height:1; border-radius:8px;
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="header-top">
+      <h1>Tris nel Corpo Fungiforme</h1>
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+        <a href="/" class="how-btn" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px;">← Torna al Portfolio</a>
+        <button id="howItWorksBtn" class="how-btn">Come funziona?</button>
+      </div>
+    </div>
+    <div class="provenance mono">
+      <span><b id="statKC">639</b> Kenyon cell</span>
+      <span><b id="statMBON">102</b> MBON</span>
+      <span><b id="statDAN">223</b> neuroni dopaminergici (PAM + PPL1)</span>
+      <span>dataset <b>flywire_fafb_public</b></span>
+    </div>
+  </header>
+
+  <div class="grid">
+    <div>
+      <div class="card" style="position:relative;">
+        <div class="flash" id="flash"></div>
+        <h2>Partita</h2>
+        <div class="status-row">
+          <span class="turn-pill" id="turnPill">—</span>
+          <span class="mono" style="font-size:0.72rem;color:var(--muted-2)">partita <span id="gameNum">1</span></span>
+        </div>
+        <div class="board-stage" id="boardStage">
+          <div class="arena-ground" id="arenaGround"></div>
+          <div class="board" id="board"></div>
+          <div class="arena-fly" id="arenaFly">
+            <div class="arena3d-loading" id="arena3dLoading">carico la mosca e le camminate (fisica reale MuJoCo/FlyGym)…</div>
+          </div>
+        </div>
+        <div class="msg" id="msg">Clicca una cella per iniziare.</div>
+        <div class="mono" style="font-size:0.68rem;color:var(--muted-2); margin:-8px 0 14px;">
+          la mosca cammina davvero (fisica reale MuJoCo/FlyGym) fino alla cella scelta, non e' un'animazione disegnata
+        </div>
+
+        <div class="controls">
+          <div class="slider-label">
+            <span>quanto imperfetta e' la mosca</span>
+            <span id="tempVal" class="mono">0.7</span>
+          </div>
+          <div class="row">
+            <input type="range" id="temp" min="0.15" max="1.6" step="0.05" value="0.7">
+          </div>
+          <div class="row">
+            <button id="resetStats">Azzera punteggio</button>
+            <button id="resetBrain">Reimposta cervello</button>
+          </div>
+        </div>
+
+        <div class="scoreboard">
+          <div class="score-tile you"><div class="n" id="scoreYou">0</div><div class="l">Tu</div></div>
+          <div class="score-tile"><div class="n" id="scoreDraw">0</div><div class="l">Pareggi</div></div>
+          <div class="score-tile fly"><div class="n" id="scoreFly">0</div><div class="l">Mosca</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="header-top">
+          <h2>Lettura del corpo fungiforme</h2>
+          <button id="whyColorBtn" class="how-btn">Perché il colore?</button>
+        </div>
+        <div class="why-box" id="whyBox">
+          <span class="why-label">Perché ha scelto questa mossa</span>
+          <p class="why-text" id="whyText">Il ragionamento della mosca comparirà qui, quando toccherà a lei giocare.</p>
+        </div>
+
+        <div class="brain3d-wrap" id="brain3d">
+          <div class="brain3d-loading" id="brain3dLoading">carico le mesh reali dei 102 MBON…</div>
+          <div class="brain3d-hint">trascina per ruotare · rotella per zoom · mesh reali FlyWire, decimate</div>
+        </div>
+
+        <h2 style="margin-top:4px;">MBON piu' attivi in questo istante</h2>
+        <div class="mbon-list" id="mbonList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="howModalOverlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="howModalTitle">
+      <button class="modal-close" id="howModalClose" aria-label="Chiudi" type="button">×</button>
+      <h2 id="howModalTitle">Cosa è reale e cosa è simulato</h2>
+      <div class="modal-body">
+    L'identita' dei Kenyon cell, dei MBON e dei neuroni dopaminergici (PAM/PPL1) viene dal
+    connettoma reale pubblico di FlyWire (un sottoinsieme di ~640 KC su circa 3200). Tutte le
+    connessioni fra questi 964 neuroni, in ogni direzione (KC-KC, KC→MBON, KC→DAN, MBON-MBON,
+    MBON→DAN, DAN-DAN, DAN→KC, MBON→KC), sono reali, segno eccitatorio/inibitorio incluso, dalla
+    connettivita' curata da Shiu et al. (Nature 2024, github.com/philshiu/Drosophila_brain_model)
+    — che per la sola fetta KC→MBON coincide quasi esattamente con i dati raccolti
+    indipendentemente per questo progetto (7806 archi su 7807). La proiezione che trasforma la
+    board del tris in attivita' dei Kenyon cell resta invece una proiezione casuale fissa (nella
+    mosca vera sarebbe il compito dei neuroni di proiezione dal lobo antennale/ottico, dati non
+    scaricati).<br><br>
+    Il calcolo che valuta ogni mossa e' una vera simulazione a impulsi (integrate-and-fire), con
+    le stesse equazioni e parametri di Shiu et al. — dv/dt=(v₀-v+g)/t_mbr, dg/dt=-g/tau, soglia
+    -45mV, reset -52mV, refrattario 2.2ms, ritardo sinaptico 1.8ms, peso 0.275mV per sinapsi —
+    applicate pero' non all'intero connettoma (~130mila neuroni, il loro uso originale via
+    Brian2/Python offline) ma ai 964 neuroni di questo circuito, per girare dal vivo nel browser a
+    ogni mossa: i Kenyon cell selezionati ricevono uno stimolo Poisson esterno (150 Hz, come nel
+    loro codice) e il resto della rete evolve con Eulero esplicito (passo 0,1ms, come l'orologio
+    di default di Brian2) invece del loro integratore lineare esatto — differenza trascurabile a
+    un passo cosi' piccolo. Il valore di una mossa (base del box "perché ha scelto questa mossa")
+    e' il conteggio REALE di spike dei MBON, non piu' una somma di pesi. In questo sottoinsieme i
+    canali di punizione sono 55 contro 43 di ricompensa (piu' 4 neutri) — uno squilibrio
+    strutturale reale che fa quasi sempre prevalere il conteggio "evitamento": per questo il box
+    giudica una mossa dal confronto con le altre disponibili in quell'istante, non dal segno
+    assoluto. Essendo uno stimolo Poisson, due valutazioni della stessa mossa non danno mai lo
+    stesso conteggio bit-per-bit — vera variabilita', non un errore; e ritagliare 964 neuroni da
+    un connettoma di ~130mila (privo di alcune popolazioni inibitorie bilancianti) puo' talvolta
+    portare la rete a un regime di scarica satura: se succede, la simulazione si ferma subito e il
+    conteggio raccolto fino a quel momento resta comunque un dato reale, solo su una finestra piu'
+    breve. L'apprendimento resta solo nel tuo browser (nessun dato lascia questa pagina).<br><br>
+    Nella vista 3D, oltre ai 102 MBON che si illuminano in base alla propria attivazione, si
+    vedono i puntini del sottoinsieme di ~640 KC usato nel circuito (posizioni reali del soma,
+    nessuna inventata): si accendono esattamente quando il calcolo li segna come attivi, non e'
+    decorativo (alcuni condividono nel dataset un'unica quota z per un limite della pipeline di
+    annotazione, corretto con un piccolo spostamento deterministico solo su quella z). Prima di
+    ogni mossa il pannello mostra la mosca "pensare": e' la vera evoluzione temporale della stessa
+    simulazione appena descritta (nessun ricalcolo), con ogni KC che si accende al suo primo spike
+    reale e i MBON che mostrano il conteggio cumulativo vero, solo rallentata (16 fotogrammi) per
+    leggibilita'. I 223 DAN (PAM/PPL1) sono anch'essi posizioni reali, spenti durante la scelta e
+    accesi solo a fine partita quando il gioco applica vittoria/sconfitta/pareggio: simula un
+    breve impulso della popolazione DAN coinvolta e legge, attraverso le sinapsi reali DAN→KC,
+    quanta dopamina arriva a ciascun KC (somma pesata spike*peso) — questo valore reale
+    per-neurone decide quanto si indebolisce ciascuna sinapsi KC→MBON (con un fallback uniforme se
+    l'impulso non produce segnale misurabile). Il lampeggio dei DAN resta pero' un'approssimazione
+    a livello di popolazione, non mostra quali singoli DAN hanno sparato.<br><br>
+    Quando la mosca comincia a camminare verso la cella scelta si accendono anche dei puntini fuori
+    dal corpo fungiforme: sono 198 neuroni discendenti reali (DN, la parte in FAFB di neuroni che
+    proseguono verso il resto del sistema nervoso) su cui i MBON sinapsano davvero, letti con una
+    somma pesata reale dei conteggi di spike dei MBON gia' calcolati per quella mossa, attraverso le
+    sinapsi MBON→DN vere (segno eccitatorio/inibitorio dal predittore di neurotrasmettitore di
+    FlyWire). Non e' una nuova simulazione — non ci sono dati reali di connettivita' fra i DN stessi
+    per giustificarne una — e soprattutto <b>non e' cio' che fa camminare la mosca</b>: il cammino
+    resta la simulazione fisica precalcolata descritta sotto, questi DN si limitano a mostrare dove
+    andrebbe davvero il segnale reale a valle della decisione, in aggiunta al bagliore "la mosca
+    pensa" che resta acceso.<br><br>
+    <b>Il corpo che cammina.</b> Il cammino della mosca non e' disegnato: e' una vera simulazione
+    fisica del corpo articolato (MuJoCo/FlyGym) calcolata una volta per ogni possibile spostamento
+    e qui solo riprodotta, traslata al punto di partenza giusto — per questo ogni cammino riparte
+    dallo stesso orientamento canonico invece di continuare da quello precedente, e puo' capitare
+    un piccolo "scatto" fra una mossa e l'altra (il gesto delle zampe resta pero' quello vero). La
+    camera sulla mosca e' inclinata di circa 30° (come nel visualizzatore ufficiale di
+    NeuroMechFly, dato che dall'alto una mosca vera sarebbe solo una sagoma ovale): le parti piu'
+    alte del corpo possono quindi apparire leggermente spostate verso un bordo, un effetto della
+    prospettiva e non un errore di allineamento.
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="colorModalOverlay" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="colorModalTitle">
+      <button class="modal-close" id="colorModalClose" aria-label="Chiudi" type="button">×</button>
+      <h2 id="colorModalTitle">Perché il colore?</h2>
+      <div class="modal-body">
+    Ogni MBON ha una "valenza" reale, calcolata una volta sola quando e' stato costruito il
+    circuito: verde se tende ad essere di avvicinamento, arancione/rosso se di evitamento. Il
+    segno principale viene dal nome anatomico reale del compartimento (es. γ1pedc, γ2, α'2, α3
+    da un lato; β2α, β1, γ5, γ4, γ3, α1 dall'altro): compartimenti gia' caratterizzati in
+    letteratura come innervati soprattutto dai PPL1 (punizione) o dai PAM (ricompensa). Un
+    secondo segnale, calcolato sui dati reali di questo sottocircuito — quali Kenyon cell
+    innervano piu' forte quel MBON, e quanta dopamina quegli stessi KC ricevono davvero da PAM
+    contro PPL1 — non cambia il colore quando il compartimento e' gia' noto in letteratura (serve
+    solo a modulare quanto e' acceso/saturo), ma diventa l'unico criterio, piu' debole, per i
+    pochi MBON il cui tag non corrisponde a nessun compartimento noto. Risultato sui 102 MBON:
+    55 di evitamento (arancioni), 43 di avvicinamento (verdi), 4 neutri o incerti (grigi, smorzati
+    anche quando "accesi").
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.186.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+// pipeline colore/luce condivisa dai tre renderer (pannello cervello + arena terreno/mosca), cosi'
+// l'aspetto resta coerente fra i pannelli invece di mischiare il vecchio default lineare di r128
+// con qualcosa di piu' moderno solo in uno dei tre.
+function applyColorPipeline(renderer){
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.1;
+}
+// ambiente procedurale (nessun HDRI esterno da scaricare) usato solo per le luci speculari/
+// riflessi d'ambiente: ogni renderer ha il proprio contesto WebGL, quindi il PMREM va generato
+// una volta per renderer (il texture risultante non e' condivisibile fra contesti diversi).
+function makeRoomEnvironment(renderer){
+  var pmrem = new THREE.PMREMGenerator(renderer);
+  var envTex = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  pmrem.dispose();
+  return envTex;
+}
+
+(function(){
+  "use strict";
+
+  var state = {
+    board: Array(9).fill(0), // 0 empty, 1 you, 2 fly
+    youStart: true,
+    gameNum: 1,
+    scores: {you:0, fly:0, draw:0},
+    circuit: null,
+    spiking: null, // connettivita' reale completa + pesi plastici KC->MBON, vedi buildSpikingConnectivity
+    busy: false,
+  };
+
+  var YOU = 1, FLY = 2;
+  var WIN_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+  function winner(b){
+    for (var i=0;i<WIN_LINES.length;i++){
+      var l = WIN_LINES[i];
+      if (b[l[0]] && b[l[0]]===b[l[1]] && b[l[1]]===b[l[2]]) return {who:b[l[0]], line:l};
+    }
+    if (b.indexOf(0) === -1) return {who:"draw", line:null};
+    return null;
+  }
+
+  // ---------- persistence (per-browser convenience only) ----------
+  // I pesi plastici NON sono piu' una matrice a parte: sono direttamente i pesi delle sinapsi
+  // KC->MBON reali dentro la rete a spiking (sp.wSorted alle posizioni sp.kmEdgeIdx) -- vedi
+  // buildSpikingConnectivity. Si salva/carica solo quell'elenco (parallelo a kmEdgeIdx, stesso
+  // ordine perche' i dati sorgente sono fissi), non piu' una griglia densa n_kc x n_mbon.
+  function saveBrain(){
+    try{
+      var sp = state.spiking;
+      var flat = [];
+      for (var k=0;k<sp.kmEdgeIdx.length;k++) flat.push(sp.wSorted[sp.kmEdgeIdx[k]]);
+      localStorage.setItem("tris-mosca-w2", JSON.stringify(flat));
+      localStorage.setItem("tris-mosca-scores", JSON.stringify(state.scores));
+    }catch(e){ /* niente storage disponibile: pazienza, si impara solo in questa sessione */ }
+  }
+  function resetPlasticWeights(){
+    var sp = state.spiking;
+    for (var k=0;k<sp.kmEdgeIdx.length;k++) sp.wSorted[sp.kmEdgeIdx[k]] = sp.kmStructural[k];
+  }
+  function loadBrain(){
+    var sp = state.spiking;
+    try{
+      var raw = localStorage.getItem("tris-mosca-w2");
+      var scores = localStorage.getItem("tris-mosca-scores");
+      if (scores) state.scores = JSON.parse(scores);
+      if (raw){
+        var flat = JSON.parse(raw);
+        if (flat.length === sp.kmEdgeIdx.length){
+          for (var k=0;k<sp.kmEdgeIdx.length;k++) sp.wSorted[sp.kmEdgeIdx[k]] = flat[k];
+          return;
+        }
+      }
+    }catch(e){ /* ignora, riparte dal backbone strutturale */ }
+    resetPlasticWeights();
+  }
+
+  // ---------- circuit ----------
+  // oltre a circuit.json (backbone strutturale KC->MBON usato anche come base per il reset del
+  // cervello), carica spiking_connectivity.json: la connettivita' reale COMPLETA (tutte le
+  // direzioni: KC-KC, KC->MBON, KC->DAN, MBON-MBON, MBON->DAN, DAN-DAN, DAN->KC, MBON->KC) fra i
+  // 964 neuroni del circuito (639 KC + 102 MBON + 223 DAN), con segno reale eccitatorio/inibitorio,
+  // dalla connettivita' curata di Shiu et al. 2024 (dati/fetch_full_circuit_connectivity.py) --
+  // e' quello che il motore a spiking (vedi LIF piu' sotto) usa per simulare davvero la rete
+  // invece di un'unica moltiplicazione di matrice istantanea.
+  // Individua, dentro la connettivita' completa, quali archi sono KC->MBON: sono gli UNICI resi
+  // plastici da reinforce() (esattamente come nell'architettura precedente, ed e' anche il sito
+  // reale della plasticita' dopamina-gated nel corpo fungiforme vero) -- tutte le altre direzioni
+  // (KC-KC, KC->DAN, MBON-MBON, MBON->DAN, DAN-DAN, DAN->KC, MBON->KC) restano fisse alla loro
+  // connettivita' strutturale reale. kmStructural conserva il valore reale originale (segno incluso)
+  // per il rinforzo omeostatico e per "Reimposta cervello"; kmEdgeIdx punta alla posizione di
+  // ciascun arco dentro wSorted, cosi' l'apprendimento scrive DIRETTAMENTE i pesi che il motore a
+  // spiking usa (nessuna matrice separata da tenere sincronizzata).
+  function buildSpikingConnectivity(sc){
+    var nKc = sc.n_kc, nMbon = sc.n_mbon;
+    var postSorted = Int32Array.from(sc.post_sorted);
+    var wSorted = Float32Array.from(sc.w_sorted);
+    var boundaries = Int32Array.from(sc.boundaries);
+    var kmEdgeIdx = [], kmKcLocal = [], kmMbonLocal = [];
+    for (var i=0;i<nKc;i++){
+      for (var e=boundaries[i]; e<boundaries[i+1]; e++){
+        var post = postSorted[e];
+        if (post >= nKc && post < nKc+nMbon){
+          kmEdgeIdx.push(e); kmKcLocal.push(i); kmMbonLocal.push(post-nKc);
+        }
+      }
+    }
+    var kmStructural = new Float32Array(kmEdgeIdx.length);
+    for (var k=0;k<kmEdgeIdx.length;k++) kmStructural[k] = wSorted[kmEdgeIdx[k]];
+    return {
+      nKc: nKc, nMbon: nMbon, nDan: sc.n_dan, nTotal: nKc + nMbon + sc.n_dan,
+      danIsPam: sc.dan_is_pam,
+      postSorted: postSorted,
+      wSorted: wSorted,
+      boundaries: boundaries,
+      danKcDanIdx: Int32Array.from(sc.dan_kc_dan_idx),
+      danKcKcIdx: Int32Array.from(sc.dan_kc_kc_idx),
+      danKcW: Float32Array.from(sc.dan_kc_w),
+      kmEdgeIdx: Int32Array.from(kmEdgeIdx),
+      kmKcLocal: Int32Array.from(kmKcLocal),
+      kmMbonLocal: Int32Array.from(kmMbonLocal),
+      kmStructural: kmStructural,
+    };
+  }
+
+  function loadCircuit(cb){
+    Promise.all([
+      fetch("circuit.json").then(function(r){ return r.json(); }),
+      fetch("spiking_connectivity.json").then(function(r){ return r.json(); }),
+      fetch("mbon_dn_connectivity.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+    ]).then(function(results){
+      var d = results[0], sc = results[1], mdn = results[2];
+      state.circuit = d;
+      state.rewardMask = d.mbon_valence.map(function(v){ return v > 0.05; });
+      state.punishMask = d.mbon_valence.map(function(v){ return v < -0.05; });
+      state.spiking = buildSpikingConnectivity(sc);
+      state.mbonDn = mdn ? {
+        nDn: mdn.n_dn,
+        mbonIdx: Int32Array.from(mdn.mbon_idx),
+        dnIdx: Int32Array.from(mdn.dn_idx),
+        w: Float32Array.from(mdn.w),
+      } : null;
+      loadBrain();
+      document.getElementById("statKC").textContent = d.n_kc;
+      document.getElementById("statMBON").textContent = d.n_mbon;
+      updateScoreboard();
+      cb();
+    });
+  }
+
+  function boardToVector(board, flyMark, oppMark){
+    var v = new Float64Array(27);
+    for (var i=0;i<9;i++){
+      if (board[i] === 0) v[i*3] = 1;
+      else if (board[i] === flyMark) v[i*3+1] = 1;
+      else v[i*3+2] = 1;
+    }
+    return v;
+  }
+
+  function encode(board, flyMark, oppMark){
+    var d = state.circuit;
+    var v = boardToVector(board, flyMark, oppMark);
+    var raw = new Float64Array(d.n_kc);
+    for (var i=0;i<27;i++){
+      if (v[i] === 0) continue;
+      var projRow = d.proj[i];
+      for (var j=0;j<d.n_kc;j++) raw[j] += projRow[j];
+    }
+    var k = Math.max(1, Math.round(0.08 * d.n_kc));
+    var idx = Array.from(raw.keys()).sort(function(a,b){ return raw[b]-raw[a]; }).slice(0,k);
+    var kc = new Float64Array(d.n_kc);
+    idx.forEach(function(i){ kc[i] = 1; });
+    return kc;
+  }
+
+  // ---------- motore a spiking (integrate-and-fire), Shiu et al. 2024 ----------
+  // Equazioni e parametri ESATTI di Shiu et al. (Nature 2024,
+  // github.com/philshiu/Drosophila_brain_model, model.py, default_params):
+  //   dv/dt = (v_0 - v + g) / t_mbr     (congelata durante il refrattario)
+  //   dg/dt = -g / tau                   (congelata durante il refrattario)
+  //   spike quando v > v_th; poi v=v_rst, g=0, refrattario per t_rfc
+  //   ogni sinapsi: allo spike presinaptico, dopo un ritardo fisso t_dly, g_post += peso
+  //   (peso = segno_reale * n_sinapsi * w_syn); stimolo esterno: eventi Poisson a tasso
+  //   r_poi che aggiungono w_syn*f_poi a v, senza refrattario per i neuroni stimolati (poi()).
+  // Applicato non all'intero connettoma (~130k neuroni, richiede Brian2/Python offline) ma al
+  // nostro sottocircuito di 964 neuroni reali e alle loro connessioni reali (vedi
+  // buildSpikingConnectivity), cosi' da girare live nel browser a ogni mossa. Approssimazione
+  // dichiarata: integrazione di Eulero esplicito, dt=0.1ms come il clock di default di Brian2,
+  // invece del suo integratore lineare esatto -- con un passo cosi' piccolo la differenza e'
+  // trascurabile.
+  var LIF = (function(){
+    var V0=-52, VRST=-52, VTH=-45, TMBR=20, TAU=5, TRFC=2.2, TDLY=1.8, WSYN=0.275, RPOI=150, FPOI=250;
+    var DT = 0.1;
+
+    // stimIdx: indici globali (0..nTotal-1, KC poi MBON poi DAN) dei neuroni con stimolo esterno
+    // Poisson per tutta la durata del run (nessun refrattario per loro, come poi() in model.py).
+    // Ritorna anche gli eventi di spike (tempo, indice) cosi' la pagina puo' rianimare la vera
+    // evoluzione temporale invece di uno scatto istantaneo (vedi animateThinking).
+    function run(conn, stimIdx, tRunMs){
+      var n = conn.nTotal;
+      var nSteps = Math.round(tRunMs / DT);
+      var delaySteps = Math.max(1, Math.round(TDLY / DT));
+      var v = new Float64Array(n).fill(V0);
+      var g = new Float64Array(n);
+      var refracUntil = new Float64Array(n).fill(-1);
+      var spikeCounts = new Int32Array(n);
+      var pending = new Float64Array(delaySteps * n);
+      var isStim = new Uint8Array(n);
+      for (var k=0;k<stimIdx.length;k++) isStim[stimIdx[k]] = 1;
+      var pPoi = 1 - Math.exp(-RPOI * DT / 1000);
+      var boundaries = conn.boundaries, post = conn.postSorted, w = conn.wSorted;
+      var evTimes = [], evNeurons = [];
+
+      // Tagliare un sottoinsieme di 964 neuroni da un connettoma di ~130k e tenerne i pesi reali
+      // non garantisce che resti stabile: nel cervello vero l'eccitazione e' bilanciata anche da
+      // popolazioni (soprattutto inibitorie) che qui non fanno parte del sottocircuito. Per alcuni
+      // pattern di Kenyon cell attivi la rete ridotta puo' quindi entrare in un regime di scarica
+      // satura (quasi ogni neurone al proprio limite refrattario) che nella mosca vera non
+      // avverrebbe. EVENT_CAP la rileva e ferma la simulazione a quell'istante invece di
+      // continuare a calcolare oltre il punto in cui l'attivita' e' ormai satura -- il conteggio
+      // di spike fino a quel momento resta un dato reale della simulazione, solo su una finestra
+      // piu' breve di quella richiesta (vedi il campo actualTRunMs restituito).
+      var EVENT_CAP = 6000;
+      var stoppedAt = tRunMs;
+
+      for (var step=0; step<nSteps; step++){
+        var t = step * DT;
+        var slot = step % delaySteps;
+        var base = slot * n;
+
+        for (var i=0;i<n;i++){
+          if (refracUntil[i] < t){
+            v[i] += (V0 - v[i] + g[i]) / TMBR * DT;
+            g[i] += (-g[i] / TAU) * DT;
+          }
+        }
+        for (var i2=0;i2<n;i2++){
+          var p = pending[base+i2];
+          if (p !== 0){ g[i2] += p; pending[base+i2] = 0; }
+        }
+        for (var k2=0;k2<stimIdx.length;k2++){
+          if (Math.random() < pPoi) v[stimIdx[k2]] += WSYN * FPOI;
+        }
+        for (var i3=0;i3<n;i3++){
+          var stim = isStim[i3];
+          if (v[i3] > VTH && (stim || refracUntil[i3] < t)){
+            spikeCounts[i3]++;
+            evTimes.push(t); evNeurons.push(i3);
+            v[i3] = VRST; g[i3] = 0;
+            refracUntil[i3] = stim ? t : t + TRFC;
+            var lo = boundaries[i3], hi = boundaries[i3+1];
+            for (var e=lo;e<hi;e++) pending[base + post[e]] += w[e] * WSYN;
+          }
+        }
+        if (evTimes.length > EVENT_CAP){ stoppedAt = t; break; }
+      }
+      return { spikeCounts: spikeCounts, evTimes: evTimes, evNeurons: evNeurons,
+               tRunMs: stoppedAt, truncated: stoppedAt < tRunMs };
+    }
+
+    return { run: run, DT: DT };
+  })();
+
+  // valuta una mossa candidata simulando davvero la rete a spiking (non piu' una singola somma
+  // istantanea): i Kenyon cell selezionati da encode() ricevono lo stimolo Poisson esterno, il
+  // resto della rete (compresi i MBON e i 223 DAN, con TUTTE le connessioni reali reciproche)
+  // evolve secondo le equazioni sopra; il valore della mossa e' letto dal conteggio di spike reale
+  // dei MBON durante la simulazione. evalResult.events porta anche i tempi di spike reali, usati
+  // da animateThinking per rivelare l'evoluzione vera invece che un ordine casuale.
+  var EVAL_T_RUN_MS = 300;
+  function evaluateMove(kc){
+    var sp = state.spiking;
+    var stimIdx = [];
+    for (var i=0;i<kc.length;i++) if (kc[i]) stimIdx.push(i);
+    var res = LIF.run(sp, stimIdx, EVAL_T_RUN_MS);
+    var mbonSpk = new Float64Array(sp.nMbon);
+    for (var j=0;j<sp.nMbon;j++) mbonSpk[j] = res.spikeCounts[sp.nKc + j];
+    var val = valueOf(mbonSpk);
+    val.events = res;
+    val.tRunMs = res.tRunMs; // durata bio effettivamente simulata (puo' essere < EVAL_T_RUN_MS, vedi EVENT_CAP)
+    return val;
+  }
+
+  function valueOf(out){
+    var approach=0, avoid=0;
+    for (var j=0;j<out.length;j++){
+      if (state.rewardMask[j]) approach += out[j];
+      else if (state.punishMask[j]) avoid += out[j];
+    }
+    return {approach:approach, avoid:avoid, net:approach-avoid, out:out};
+  }
+
+  // Bug reale trovato analizzando perche' il box "perche' ha scelto questa mossa" desse quasi
+  // sempre lo stesso verdetto: il cursore "quanto imperfetta e' la mosca" (0.15..1.6) era tarato
+  // per la vecchia scala dei punteggi (somma di pesi, valori tipici ~±1), ma da quando net e' un
+  // conteggio REALE di spike (valori tipici a due cifre/centinaia) quella stessa temperatura,
+  // confrontata con differenze fra mosse candidate ormai enormi in proporzione, rendeva il softmax
+  // quasi un puro argmax: la mosca finiva per giocare (quasi) sempre la mossa oggettivamente
+  // migliore a QUALSIASI valore dello slider, che perdeva cosi' ogni effetto pratico. Fix: la
+  // temperatura viene applicata al DIVARIO relativo fra le mosse candidate (normalizzato sul loro
+  // stesso spread, max-min) invece che al valore assoluto dei punteggi — cosi' il cursore mantiene
+  // lo stesso significato qualunque sia la scala numerica sottostante. Verificato numericamente:
+  // con questo fix, sullo stesso ventaglio di mosse, temp=0.15 fa scegliere la mossa migliore
+  // circa il 75% delle volte, temp=1.6 circa il 18% (vicino all'uniforme fra le candidate).
+  function softmaxChoice(scores, temperature){
+    var max = Math.max.apply(null, scores);
+    var min = Math.min.apply(null, scores);
+    var scale = Math.max(1e-6, max - min);
+    var exps = scores.map(function(s){ return Math.exp((s-max)/(scale*Math.max(temperature,0.001))); });
+    var sum = exps.reduce(function(a,b){return a+b;},0);
+    var probs = exps.map(function(e){ return e/sum; });
+    var r = Math.random(), acc=0;
+    for (var i=0;i<probs.length;i++){ acc+=probs[i]; if (r<=acc) return i; }
+    return probs.length-1;
+  }
+
+  function flyDecide(board, temperature){
+    var empty = [];
+    for (var i=0;i<9;i++) if (board[i]===0) empty.push(i);
+    var scores = [], evals = [], kcs = [];
+    empty.forEach(function(cell){
+      var hyp = board.slice(); hyp[cell] = FLY;
+      var kc = encode(hyp, FLY, YOU);
+      var val = evaluateMove(kc);
+      scores.push(val.net); evals.push(val); kcs.push(kc);
+    });
+    var choice = softmaxChoice(scores, temperature);
+    // classifica il punteggio della mossa scelta fra tutte le candidate, per poter spiegare in
+    // parole semplici se la mosca ha scelto davvero la migliore secondo il suo cervello o se la
+    // sua naturale imperfezione l'ha portata a preferirne un'altra. bestNet/worstNet servono a
+    // capire QUANTO era migliore/peggiore rispetto al ventaglio di alternative disponibili ora,
+    // che e' cio' che conta davvero per la scelta (vedi nota in explainDecision sul perche' il
+    // segno assoluto di net da solo non e' un buon indicatore).
+    var order = scores.map(function(_, i){ return i; }).sort(function(a,b){ return scores[b]-scores[a]; });
+    var rank = order.indexOf(choice) + 1;
+    return {
+      cell: empty[choice], kc: kcs[choice], evalResult: evals[choice],
+      rank: rank, nCandidates: empty.length,
+      bestNet: scores[order[0]], worstNet: scores[order[order.length-1]],
+    };
+  }
+
+  function pickPhrase(options){
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
+  // Traduce il risultato numerico della valutazione in una frase in linguaggio semplice, per chi
+  // non conosce il gergo neuroscientifico. Nessun dato inventato: usa solo evalResult.approach/
+  // avoid (gia' calcolati da valueOf su spike reali) e rank/nCandidates/bestNet/worstNet (gia'
+  // calcolati da flyDecide confrontando le mosse candidate fra loro).
+  //
+  // Nota tecnica importante dietro questa scelta di design: in questo sottoinsieme di 102 MBON i
+  // canali legati a punizione sono 55 contro i 43 legati a ricompensa (piu' 4 neutri), uno
+  // squilibrio strutturale reale del circuito che fa si' che il conteggio assoluto di spike
+  // "evitamento" superi quasi sempre quello "avvicinamento", qualunque mossa si valuti — usare
+  // solo il segno assoluto di approach-avoid per giudicare "buona/rischiosa" una mossa avrebbe
+  // percio' prodotto quasi sempre lo stesso verdetto, non piu' informativo. Cio' che guida
+  // davvero la scelta della mosca e' invece il CONFRONTO fra i punteggi delle mosse candidate
+  // (softmaxChoice sceglie in base alle differenze relative, non al valore assoluto), quindi la
+  // spiegazione si basa principalmente su quello: dove si colloca questa mossa rispetto alle
+  // altre disponibili in questo istante.
+  function explainDecision(decision){
+    var ev = decision.evalResult;
+    var approach = Math.round(ev.approach), avoid = Math.round(ev.avoid);
+    var counts = " (impulsi nervosi rilevati: " + approach + " legati a ricordi di vittoria, " + avoid + " legati a ricordi di sconfitta.)";
+
+    if (decision.nCandidates <= 1){
+      return pickPhrase([
+        "Era l'unica cella libera rimasta: l'ha giocata senza bisogno di scegliere fra alternative.",
+        "Non c'era altra scelta possibile: era rimasta una sola cella libera."
+      ]) + counts;
+    }
+
+    var range = decision.bestNet - decision.worstNet;
+    var frac = range > 1e-6 ? (ev.net - decision.worstNet) / range : 1; // 0=peggiore fra le candidate, 1=migliore
+    var sentence;
+
+    if (decision.rank === 1){
+      sentence = pickPhrase([
+        "Tra tutte le mosse possibili in questo momento, e' quella che il suo cervello giudicava migliore.",
+        "Rispetto alle altre celle libere disponibili ora, i suoi neuroni hanno risposto meglio proprio a questa mossa.",
+        "E' l'opzione che, confrontata con le altre disponibili in questo istante, il suo cervello preferiva piu' chiaramente."
+      ]);
+    } else if (frac > 0.55){
+      sentence = pickPhrase([
+        "Non era la mossa assoluta migliore secondo il suo cervello, ma era comunque fra le piu' promettenti",
+        "C'era un'opzione leggermente preferita dalla sua valutazione, ma questa non era lontana"
+      ]) + " (era al posto " + decision.rank + " su " + decision.nCandidates + "). La mosca non gioca mai in modo perfetto, e sceglie con una punta di casualita' anche fra le opzioni migliori.";
+    } else if (frac > 0.25){
+      sentence = "Il suo cervello valutava altre mosse come migliori (questa era al posto " + decision.rank + " su " + decision.nCandidates + "), ma la scelta finale conserva sempre una componente casuale — puoi regolare quanto con il cursore qui sopra.";
+    } else {
+      sentence = pickPhrase([
+        "Il suo cervello giudicava questa fra le mosse meno promettenti disponibili ora (posto " + decision.rank + " su " + decision.nCandidates + "), ma la sua naturale imperfezione l'ha comunque portata a sceglierla",
+        "Fra le mosse disponibili, questa era una di quelle che il suo cervello preferiva meno (posto " + decision.rank + " su " + decision.nCandidates + "): la scelta finale non e' mai del tutto ottimale"
+      ]) + ".";
+    }
+    return sentence + counts;
+  }
+
+  function setWhyText(text){
+    var el = document.getElementById("whyText");
+    if (el) el.textContent = text;
+  }
+
+  var eligibility = null;
+  // ELIG_NORM: stima approssimativa dello spike massimo atteso per un Kenyon cell stimolato in
+  // EVAL_T_RUN_MS a r_poi=150Hz (~45 spike attesi in 300ms) -- solo per riportare il conteggio di
+  // spike reale sulla stessa scala 0..1 che la vecchia maschera binaria usava, cosi' i tassi di
+  // apprendimento (lr, homeo) restano tarati in modo simile.
+  var ELIG_NORM = 45;
+  function accumulateEligibility(spikeCountsKc){
+    var d = state.circuit;
+    if (!eligibility) eligibility = new Float64Array(d.n_kc);
+    for (var i=0;i<d.n_kc;i++){
+      var e = Math.min(1, spikeCountsKc[i] / ELIG_NORM);
+      eligibility[i] = eligibility[i]*0.6 + e;
+    }
+  }
+
+  // segnale di dopamina reale (da_reward/da_punish) associato a ogni esito: usato sia da
+  // reinforce() per aggiornare le sinapsi sia dall'animazione dei DAN, cosi' i due restano
+  // sempre coerenti fra loro.
+  function daSignalFor(outcome){
+    if (outcome === "win") return {daReward:1, daPunish:0};
+    if (outcome === "lose") return {daReward:0, daPunish:1};
+    return {daReward:0.15, daPunish:0.15};
+  }
+
+  // Dopamina reale per-KC: simula un breve impulso della sola popolazione DAN corrispondente
+  // all'esito (PAM per ricompensa, PPL1 per punizione, stimolo Poisson esterno esattamente come
+  // in evaluateMove ma sui DAN invece che sui KC) e legge, per ciascun Kenyon cell, quanta
+  // dopamina reale arriva davvero attraverso le sinapsi DAN->KC vere (dan_kc_synapses_sample.csv,
+  // finora mai usate: solo la loro presenza/assenza contava, non il peso). E' una somma pesata
+  // spike*peso, non un evento di soglia: biologicamente la dopamina modula la plasticita' anche
+  // senza far sparare il KC bersaglio. Normalizzato 0..1 (1 = KC piu' dopaminergicamente
+  // raggiunto in questo impulso); se l'impulso non produce alcun segnale misurabile, torna null e
+  // reinforce() ricade sul vecchio comportamento uniforme.
+  var REINFORCE_T_RUN_MS = 220;
+  function computeDopaminePerKc(wantPam){
+    var sp = state.spiking;
+    var stimIdx = [];
+    for (var i=0;i<sp.nDan;i++){
+      if (!!sp.danIsPam[i] === wantPam) stimIdx.push(sp.nKc + sp.nMbon + i);
+    }
+    if (!stimIdx.length) return null;
+    var res = LIF.run(sp, stimIdx, REINFORCE_T_RUN_MS);
+    var dopa = new Float64Array(sp.nKc);
+    for (var e=0;e<sp.danKcDanIdx.length;e++){
+      var danLocal = sp.danKcDanIdx[e];
+      var danSpikes = res.spikeCounts[sp.nKc + sp.nMbon + danLocal];
+      if (!danSpikes) continue;
+      var v = danSpikes * sp.danKcW[e];
+      if (v > 0) dopa[sp.danKcKcIdx[e]] += v;
+    }
+    var maxV = 0;
+    for (var i=0;i<sp.nKc;i++) if (dopa[i] > maxV) maxV = dopa[i];
+    if (maxV <= 0) return null;
+    for (var i2=0;i2<sp.nKc;i2++) dopa[i2] = dopa[i2] / maxV;
+    return dopa;
+  }
+
+  // Lettura pesata reale MBON->DN (stessa idea della dopamina sopra: una somma spike*peso su
+  // sinapsi reali, NON una nuova simulazione LIF -- non abbiamo dati reali di connettivita' DN-DN
+  // ne' parametri intrinseci dei DN per giustificarla). mbonSpk e' l'array reale di conteggi di
+  // spike MBON gia' calcolato da evaluateMove() per la mossa scelta (decision.evalResult.out):
+  // niente viene ricalcolato, solo letto attraverso le sinapsi MBON->DN vere (segno dal
+  // predittore di neurotrasmettitore, vedi data/export_dn_data.py). Normalizzato 0..1 per neurone
+  // (per-DN, non un unico scalare globale, a differenza del readout DAN->KC sopra) cosi' il
+  // pannello puo' accendere ogni DN in proporzione alla propria intensita' reale.
+  function computeDnActivity(mbonSpk){
+    var mdn = state.mbonDn;
+    if (!mdn) return null;
+    var raw = new Float64Array(mdn.nDn);
+    for (var e=0;e<mdn.w.length;e++){
+      raw[mdn.dnIdx[e]] += mbonSpk[mdn.mbonIdx[e]] * mdn.w[e];
+    }
+    var maxAbs = 0;
+    for (var i=0;i<raw.length;i++) maxAbs = Math.max(maxAbs, Math.abs(raw[i]));
+    if (maxAbs === 0) maxAbs = 1;
+    var t = new Float32Array(raw.length);
+    for (var i2=0;i2<raw.length;i2++) t[i2] = Math.min(1, Math.abs(raw[i2]) / maxAbs);
+    return t;
+  }
+
+  function reinforce(outcome){
+    var sp = state.spiking;
+    var da = daSignalFor(outcome);
+    var daReward = da.daReward, daPunish = da.daPunish;
+    var dopaReward = daReward > 0 ? computeDopaminePerKc(true) : null;
+    var dopaPunish = daPunish > 0 ? computeDopaminePerKc(false) : null;
+    var lr = 0.15, homeo = 0.02;
+    // itera direttamente sugli archi KC->MBON reali (sp.kmEdgeIdx), non piu' su una griglia densa:
+    // stesso aggiornamento di prima (indebolimento selettivo dopamina-gated + decadimento
+    // omeostatico verso la connettivita' strutturale reale), ora modulato per-KC dalla dopamina
+    // reale (dopaReward/dopaPunish, o 1 se il rispettivo impulso non ha prodotto segnale) invece
+    // che da un unico scalare uguale per tutti.
+    for (var k=0;k<sp.kmEdgeIdx.length;k++){
+      var kcLocal = sp.kmKcLocal[k], mbonLocal = sp.kmMbonLocal[k];
+      var e = eligibility ? eligibility[kcLocal] : 0;
+      var dr = daReward * (dopaReward ? dopaReward[kcLocal] : 1);
+      var dp = daPunish * (dopaPunish ? dopaPunish[kcLocal] : 1);
+      var idx = sp.kmEdgeIdx[k];
+      var w = sp.wSorted[idx], base = sp.kmStructural[k];
+      if (dr>0 && state.punishMask[mbonLocal]) w -= lr*dr*e*w;
+      if (dp>0 && state.rewardMask[mbonLocal]) w -= lr*dp*e*w;
+      w += homeo*(base-w);
+      sp.wSorted[idx] = w;
+    }
+    eligibility = null;
+    saveBrain();
+  }
+
+  // ---------- visualizzazione 3D: mesh reali dei 102 MBON, decimate ----------
+  var Brain3D = (function(){
+    var scene, camera, renderer, controls, composer, group, meshes = [];
+    var kcActivePoints = null, kcActiveColors = null, kcActiveBase = null;
+    var danPoints = null, danColors = null, danBase = null, danIsPam = null;
+    var dnPoints = null, dnColors = null, dnBase = null;
+
+    function cssVar(name){
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888888";
+    }
+    function colorFor(valence){
+      if (valence > 0.05) return new THREE.Color(cssVar("--reward"));
+      if (valence < -0.05) return new THREE.Color(cssVar("--punish"));
+      return new THREE.Color(cssVar("--muted-2"));
+    }
+
+    // THREE.PointsMaterial senza una texture disegna ogni punto come un quadratino pieno: a
+    // riposo (colore grigio spento) e' quasi invisibile allo zoom normale, ma ingrandendo con la
+    // rotellina (specie sul grumo di KC concentrati nel calice del corpo fungiforme, dove i somi
+    // sono davvero ravvicinati) diventa un evidente reticolo di "cubetti" grigi netti — un artefatto
+    // del rendering, non i dati. Genera una volta sola uno sprite rotondo sfumato (radiale, bianco
+    // -> trasparente) da usare come "map" per tutti i punti KC/DAN, cosi' appaiono pallini morbidi.
+    var dotTexture = null;
+    function getDotTexture(){
+      if (dotTexture) return dotTexture;
+      var size = 64;
+      var canvas = document.createElement("canvas");
+      canvas.width = canvas.height = size;
+      var ctx = canvas.getContext("2d");
+      var grad = ctx.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2);
+      grad.addColorStop(0, "rgba(255,255,255,1)");
+      grad.addColorStop(0.7, "rgba(255,255,255,0.55)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, size, size);
+      dotTexture = new THREE.CanvasTexture(canvas);
+      return dotTexture;
+    }
+
+    function onResize(){
+      if (!renderer) return;
+      var container = renderer.domElement.parentElement;
+      var w = container.clientWidth, h = container.clientHeight;
+      if (!w || !h) return;
+      renderer.setSize(w, h);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+      if (composer) composer.setSize(w, h);
+    }
+
+    function animate(){
+      requestAnimationFrame(animate);
+      if (controls) controls.update();
+      if (composer) composer.render();
+    }
+
+    function init(container){
+      if (typeof THREE === "undefined") return false;
+      var w = container.clientWidth || 300, h = container.clientHeight || 225;
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(38, w / h, 0.01, 100);
+      camera.position.set(0, 0, 2.6);
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.setSize(w, h);
+      applyColorPipeline(renderer);
+      container.insertBefore(renderer.domElement, container.firstChild);
+
+      scene.environment = makeRoomEnvironment(renderer);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+      var key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(2, 3, 4); scene.add(key);
+      var rim = new THREE.DirectionalLight(0x88aadd, 0.5); rim.position.set(-3, -1, -2); scene.add(rim);
+
+      group = new THREE.Group();
+      scene.add(group);
+
+      // OrbitControls al posto del drag/wheel manuale di prima: la camera orbita davvero
+      // attorno al gruppo (fermo), invece di ruotare il gruppo sotto una luce fissa.
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.08;
+      controls.enablePan = false;
+      controls.minDistance = 1.2;
+      controls.maxDistance = 6;
+      controls.target.set(0, 0, 0);
+
+      composer = new EffectComposer(renderer);
+      composer.addPass(new RenderPass(scene, camera));
+      // bloom solo sulle parti davvero emissive (MBON attivi): soglia alta cosi' non "sbava"
+      // sull'intera scena, solo sui neuroni che l'attivita' reale accende di piu'.
+      var bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.55, 0.4, 0.2);
+      composer.addPass(bloomPass);
+
+      window.addEventListener("resize", onResize);
+      if (window.ResizeObserver) new ResizeObserver(onResize).observe(container);
+
+      animate();
+      return true;
+    }
+
+    // le mesh reali dei 102 MBON arrivano in un unico glTF binario (mbon_meshes.glb, Draco-
+    // compresso), un nodo per neurone nominato "0".."101" nello STESSO ordine di
+    // data/id_lists.pkl["mbon"] usato per mbonValence — cosi' getObjectByName(String(i)) prende
+    // sempre la mesh del neurone giusto per mbonValence[i]. Il vecchio formato a shard nominava i
+    // nodi nell'ordine "striato" round-robin dei file shard, che non coincideva con l'ordine di
+    // mbonValence: quasi tutte le mesh finivano colorate con la valenza di un ALTRO neurone (bug
+    // scoperto e corretto costruendo questo nuovo pacchetto, vedi data/pack_mbon_meshes_glb.py).
+    function buildMeshes(gltfScene, mbonValence){
+      var centers = [];
+      var envIntensity = 1.0;
+      for (var i = 0; i < mbonValence.length; i++){
+        var node = gltfScene.getObjectByName(String(i));
+        if (!node || !node.geometry){ meshes.push(null); centers.push(null); continue; }
+        var geo = node.geometry;
+        geo.computeVertexNormals();
+        geo.computeBoundingSphere();
+        var center = geo.boundingSphere ? geo.boundingSphere.center.clone() : new THREE.Vector3();
+        centers.push(center);
+
+        var baseColor = colorFor(mbonValence[i]);
+        var mat = new THREE.MeshPhysicalMaterial({
+          color: baseColor.clone().multiplyScalar(0.35),
+          emissive: baseColor.clone(),
+          emissiveIntensity: 0.05,
+          roughness: 0.55, metalness: 0.05,
+          clearcoat: 0.4, clearcoatRoughness: 0.25,
+          envMapIntensity: envIntensity,
+          transparent: true, opacity: 0.92,
+        });
+        var mesh = new THREE.Mesh(geo, mat);
+        mesh.position.copy(node.position);
+        mesh.quaternion.copy(node.quaternion);
+        mesh.scale.copy(node.scale);
+        group.add(mesh);
+        meshes.push({ mesh: mesh, mat: mat, baseColor: baseColor, center: center });
+      }
+    }
+
+    // nuvola di punti del sottoinsieme di Kenyon cell reali (posizioni vere del soma, da
+    // FlyWire) davvero usato nel calcolo del circuito (~639, stesso ordine di circuit.json):
+    // si "accendono" per davvero quando sono fra i Kenyon cell attivi per la mossa che la
+    // mosca sta valutando.
+    function buildKcPoints(pointsData){
+      // colore di riposo volutamente smorzato (non il muted-2 pieno) cosi' i puntini restano
+      // discreti finche' non si accendono davvero per una mossa — vedi getDotTexture() sopra
+      // per il fix dello sprite quadrato.
+      var restColor = new THREE.Color(cssVar("--muted-2")).multiplyScalar(0.5);
+      var activeArr = new Float32Array(base64ToBuffer(pointsData.points_active_b64));
+      var nActive = activeArr.length / 3;
+      kcActiveBase = new Float32Array(nActive * 3);
+      for (var i = 0; i < nActive; i++){
+        kcActiveBase[i*3] = restColor.r; kcActiveBase[i*3+1] = restColor.g; kcActiveBase[i*3+2] = restColor.b;
+      }
+      kcActiveColors = kcActiveBase.slice();
+      var activeGeo = new THREE.BufferGeometry();
+      activeGeo.setAttribute("position", new THREE.BufferAttribute(activeArr, 3));
+      activeGeo.setAttribute("color", new THREE.BufferAttribute(kcActiveColors, 3));
+      var activeMat = new THREE.PointsMaterial({
+        size: 0.02, sizeAttenuation: true, vertexColors: true,
+        map: getDotTexture(), alphaTest: 0.05,
+        transparent: true, opacity: 0.95, depthWrite: false,
+      });
+      kcActivePoints = new THREE.Points(activeGeo, activeMat);
+      group.add(kcActivePoints);
+    }
+
+    // nuvola di punti dei neuroni dopaminergici reali (PAM=reward, PPL1=punishment, FlyWire):
+    // a differenza dei KC, che si accendono durante la VALUTAZIONE di una mossa, i DAN restano
+    // spenti in quel momento e si accendono solo quando il gioco applica il segnale di rinforzo
+    // a fine partita (vittoria/sconfitta/pareggio) — e' li' che la dopamina reale entrerebbe in
+    // gioco nella mosca vera, non prima; farli lampeggiare durante la scelta della mossa sarebbe
+    // biologicamente scorretto.
+    function buildDanPoints(danData){
+      // stesso colore di riposo smorzato e stesso sprite rotondo dei punti KC, vedi buildKcPoints.
+      var restColor = new THREE.Color(cssVar("--muted-2")).multiplyScalar(0.5);
+      var posArr = new Float32Array(base64ToBuffer(danData.points_b64));
+      var n = posArr.length / 3;
+      danIsPam = new Uint8Array(base64ToBuffer(danData.is_pam_b64));
+      danBase = new Float32Array(n * 3);
+      for (var i = 0; i < n; i++){
+        danBase[i*3] = restColor.r; danBase[i*3+1] = restColor.g; danBase[i*3+2] = restColor.b;
+      }
+      danColors = danBase.slice();
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(posArr, 3));
+      geo.setAttribute("color", new THREE.BufferAttribute(danColors, 3));
+      var mat = new THREE.PointsMaterial({
+        size: 0.027, sizeAttenuation: true, vertexColors: true,
+        map: getDotTexture(), alphaTest: 0.05,
+        transparent: true, opacity: 0.95, depthWrite: false,
+      });
+      danPoints = new THREE.Points(geo, mat);
+      group.add(danPoints);
+    }
+
+    function resetDanActivity(){
+      if (!danPoints || !danColors) return;
+      danColors.set(danBase);
+      danPoints.geometry.attributes.color.needsUpdate = true;
+    }
+
+    // t in [0,1]: intensita' del segnale di rinforzo applicato ora. daReward accende i DAN
+    // PAM verso il colore di ricompensa, daPunish accende i DAN PPL1 verso quello di punizione
+    // (entrambi reali, letti da dan_is_pam) — sono le stesse due grandezze reali che reinforce()
+    // usa per aggiornare le sinapsi, qui solo visualizzate invece che solo applicate in silenzio.
+    function updateDanActivity(daReward, daPunish){
+      if (!danPoints || !danColors) return;
+      var reward = new THREE.Color(cssVar("--reward"));
+      var punish = new THREE.Color(cssVar("--punish"));
+      var n = danColors.length / 3;
+      for (var i = 0; i < n; i++){
+        var isPam = danIsPam[i];
+        var t = isPam ? daReward : daPunish;
+        var target = isPam ? reward : punish;
+        var r = danBase[i*3] + (target.r-danBase[i*3])*t;
+        var g = danBase[i*3+1] + (target.g-danBase[i*3+1])*t;
+        var b = danBase[i*3+2] + (target.b-danBase[i*3+2])*t;
+        danColors[i*3]=r; danColors[i*3+1]=g; danColors[i*3+2]=b;
+      }
+      danPoints.geometry.attributes.color.needsUpdate = true;
+    }
+
+    // nuvola di punti dei neuroni discendenti (DN) reali su cui sinapsano i MBON (198 su 1303
+    // DN reali di FAFB, quelli con almeno una sinapsi MBON->DN reale — vedi
+    // data/export_dn_data.py). A differenza dei DAN (segnale di rinforzo a fine partita) e dei
+    // KC (si accendono DURANTE la valutazione), questi si accendono quando la mosca AGISCE sulla
+    // mossa scelta — vedi animateDnGlow più sotto nello script principale — in aggiunta al bagliore
+    // "la mosca pensa" gia' esistente, non al posto suo. Nessuna sotto-popolazione da distinguere
+    // (a differenza di PAM/PPL1 per i DAN): un solo colore (--accent, lo stesso dei KC attivi) che
+    // si accende in intensita' per neurone, proporzionale alla lettura pesata reale MBON->DN.
+    function buildDnPoints(dnData){
+      var restColor = new THREE.Color(cssVar("--muted-2")).multiplyScalar(0.5);
+      var posArr = new Float32Array(base64ToBuffer(dnData.points_b64));
+      var n = posArr.length / 3;
+      dnBase = new Float32Array(n * 3);
+      for (var i = 0; i < n; i++){
+        dnBase[i*3] = restColor.r; dnBase[i*3+1] = restColor.g; dnBase[i*3+2] = restColor.b;
+      }
+      dnColors = dnBase.slice();
+      var geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.BufferAttribute(posArr, 3));
+      geo.setAttribute("color", new THREE.BufferAttribute(dnColors, 3));
+      var mat = new THREE.PointsMaterial({
+        size: 0.03, sizeAttenuation: true, vertexColors: true,
+        map: getDotTexture(), alphaTest: 0.05,
+        transparent: true, opacity: 0.95, depthWrite: false,
+      });
+      dnPoints = new THREE.Points(geo, mat);
+      group.add(dnPoints);
+    }
+
+    function resetDnActivity(){
+      if (!dnPoints || !dnColors) return;
+      dnColors.set(dnBase);
+      dnPoints.geometry.attributes.color.needsUpdate = true;
+    }
+
+    // intensities: array (lunghezza n_dn) di valori [0,1] gia' pronti da mostrare (il chiamante
+    // esterno decide sia l'intensita' per-neurone che l'eventuale fattore di rampa temporale,
+    // qui si limita a interpolare rest->accent per ciascun punto, come updateKcActivity).
+    function updateDnActivity(intensities){
+      if (!dnPoints || !dnColors || !intensities) return;
+      var accent = new THREE.Color(cssVar("--accent"));
+      var n = dnColors.length / 3;
+      for (var i = 0; i < n; i++){
+        var t = intensities[i] || 0;
+        dnColors[i*3]   = dnBase[i*3]   + (accent.r-dnBase[i*3])*t;
+        dnColors[i*3+1] = dnBase[i*3+1] + (accent.g-dnBase[i*3+1])*t;
+        dnColors[i*3+2] = dnBase[i*3+2] + (accent.b-dnBase[i*3+2])*t;
+      }
+      dnPoints.geometry.attributes.color.needsUpdate = true;
+    }
+
+    function updateActivity(out, kc){
+      if (!out){
+        meshes.forEach(function(m){ if (m) m.mat.emissiveIntensity = 0.05; });
+        resetKcActivity();
+        resetDanActivity();
+        resetDnActivity();
+        return;
+      }
+      updateKcActivity(kc);
+      var maxAbs = 0;
+      for (var i = 0; i < out.length; i++) maxAbs = Math.max(maxAbs, Math.abs(out[i]));
+      if (maxAbs === 0) maxAbs = 1;
+      meshes.forEach(function(m, i){
+        if (!m) return;
+        var t = Math.min(1, Math.abs(out[i]) / maxAbs);
+        m.mat.emissiveIntensity = 0.05 + t * 1.1;
+      });
+    }
+
+    function resetKcActivity(){
+      if (!kcActivePoints || !kcActiveColors) return;
+      kcActiveColors.set(kcActiveBase);
+      kcActivePoints.geometry.attributes.color.needsUpdate = true;
+    }
+
+    // accende, fra i ~639 Kenyon cell reali del sottoinsieme usato nel circuito, esattamente
+    // quelli che il codice ha davvero attivato (kc[i]===1) per la mossa in valutazione ora.
+    function updateKcActivity(kc){
+      if (!kcActivePoints || !kcActiveColors) return;
+      var accent = new THREE.Color(cssVar("--accent"));
+      var n = kcActiveColors.length / 3;
+      for (var i = 0; i < n; i++){
+        var on = kc && kc[i];
+        var r = on ? accent.r : kcActiveBase[i*3];
+        var g = on ? accent.g : kcActiveBase[i*3+1];
+        var b = on ? accent.b : kcActiveBase[i*3+2];
+        kcActiveColors[i*3] = r; kcActiveColors[i*3+1] = g; kcActiveColors[i*3+2] = b;
+      }
+      kcActivePoints.geometry.attributes.color.needsUpdate = true;
+    }
+
+    function base64ToBuffer(b64){
+      var bin = atob(b64);
+      var buf = new ArrayBuffer(bin.length);
+      var view = new Uint8Array(buf);
+      for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+      return buf;
+    }
+
+    var dracoLoader = null;
+    function loadGlb(url){
+      if (!dracoLoader){
+        dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath("draco/");
+      }
+      var loader = new GLTFLoader();
+      loader.setDRACOLoader(dracoLoader);
+      return new Promise(function(resolve, reject){
+        loader.load(url, function(gltf){ resolve(gltf.scene); }, undefined, reject);
+      });
+    }
+
+    function load(container, mbonValence){
+      if (!init(container)) return Promise.resolve(false);
+      return Promise.all([
+        loadGlb("mbon_meshes.glb"),
+        fetch("kc_points.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+        fetch("dan_points.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+        fetch("dn_points.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      ]).then(function(results){
+        var gltfScene = results[0], pointsData = results[1], danData = results[2], dnData = results[3];
+        buildMeshes(gltfScene, mbonValence);
+        if (pointsData) buildKcPoints(pointsData);
+        if (danData) buildDanPoints(danData);
+        if (dnData) buildDnPoints(dnData);
+        return true;
+      }).catch(function(err){ console.error("brain3d load error", err); return false; });
+    }
+
+    return {
+      load: load, updateActivity: updateActivity,
+      updateDanActivity: updateDanActivity, updateDnActivity: updateDnActivity,
+    };
+  })();
+
+  // ---------- arena 3D: corpo articolato reale (FlyGym/MuJoCo), cammini precalcolati ----------
+  var FlyArena = (function(){
+    var SPACING = 5.0;
+    var CELLS = [];
+    for (var r = 0; r < 3; r++){
+      var ry = [1, 0, -1][r];
+      for (var c = 0; c < 3; c++){
+        var cx = [-1, 0, 1][c];
+        CELLS.push({ x: cx * SPACING, y: ry * SPACING });
+      }
+    }
+    var HOME = { x: 0.0, y: -2 * SPACING - 3.0 };
+    var PLAYBACK_SPEED = 1.45; // riproduzione leggermente accelerata rispetto al tempo simulato reale, per giocabilita' (~15% piu' lenta della versione precedente)
+
+    var VIEW_HALF = 7.5; // meta' estensione del mondo (unita' MuJoCo) inquadrata: allinea esattamente le celle 3D alla griglia CSS sovrapposta
+    var FLY_TILT = Math.PI / 6; // 30 gradi: la camera della sola mosca e' leggermente obliqua (non dall'alto puro) per rendere leggibili zampe e ali
+
+    // due scene/camere/renderer separati che condividono la stessa inquadratura ortografica:
+    // "ground" (terreno + griglia) sotto la plancia CSS, "fly" (solo il corpo della mosca) sopra,
+    // cosi' la mosca non viene mai coperta dai bordi delle celle.
+    var groundScene, groundCamera, groundRenderer, groundGroup;
+    var flyScene, flyCamera, flyRenderer, flyGroup;
+    var bodyGroups = []; // index = body id (0 = world, non usato)
+    var cellMarkers = [];
+    var walksData = null, frameDt = 0.015;
+    var currentPos = { x: HOME.x, y: HOME.y };
+    var ready = false, loadPromise = null;
+
+    function vectorKey(dx, dy){
+      // Python's round(x,1) su un float stampa sempre un decimale (es. "-5.0"), mentre
+      // JS lo tronca ("-5"): usiamo toFixed(1) per riprodurre esattamente le chiavi generate lato Python.
+      return (Math.round(dx*10)/10).toFixed(1) + "_" + (Math.round(dy*10)/10).toFixed(1);
+    }
+
+    function base64ToBuffer(b64){
+      var bin = atob(b64);
+      var buf = new ArrayBuffer(bin.length);
+      var view = new Uint8Array(buf);
+      for (var i = 0; i < bin.length; i++) view[i] = bin.charCodeAt(i);
+      return buf;
+    }
+
+    function makeGroundCamera(){
+      // camera ortografica fissa, dall'alto: X e Y del mondo (piano MuJoCo del terreno) si
+      // allineano esattamente alle colonne/righe della griglia CSS sovrapposta, nessuna prospettiva
+      // che deformi le celle, nessuna interazione (il drag serve ai click sulle celle).
+      var cam = new THREE.OrthographicCamera(-VIEW_HALF, VIEW_HALF, VIEW_HALF, -VIEW_HALF, 0.1, 60);
+      cam.position.set(0, 0, 22);
+      cam.up.set(0, 1, 0);
+      cam.lookAt(0, 0, 0);
+      return cam;
+    }
+
+    function makeFlyCamera(){
+      // camera ortografica leggermente obliqua (inclinata di FLY_TILT attorno all'asse X del mondo)
+      // solo per lo strato della mosca: vista dall'alto pura rende inevitabilmente zampe e ali
+      // schiacciate in una macchia ovale (una mosca vista da sopra e' davvero cosi'), mentre una
+      // leggera angolazione (come nel viewer NeuroMechFly) rivela la struttura articolata del corpo.
+      // La proiezione resta ortografica e il fattore verticale e' compensato (vedi onResize) cosi'
+      // i punti al livello del terreno (Z=0) restano allineati alla griglia CSS sottostante; solo le
+      // parti sollevate del corpo (zampe, ali, capo) si spostano leggermente verso un bordo, in modo
+      // naturale, come conseguenza della prospettiva 3/4.
+      var D = 22;
+      var cam = new THREE.OrthographicCamera(-VIEW_HALF, VIEW_HALF, VIEW_HALF, -VIEW_HALF, 0.1, 60);
+      cam.position.set(0, -D * Math.sin(FLY_TILT), D * Math.cos(FLY_TILT));
+      cam.up.set(0, 0, 1);
+      cam.lookAt(0, 0, 0);
+      return cam;
+    }
+
+    function makeRenderer(container){
+      var w = container.clientWidth || 300, h = container.clientHeight || 300;
+      var r = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      r.setSize(w, h);
+      container.insertBefore(r.domElement, container.firstChild);
+      return r;
+    }
+
+    function onResize(){
+      // fattore verticale di meta'-inquadratura: 1 per la camera dall'alto (terreno/griglia),
+      // cos(FLY_TILT) per la camera obliqua della mosca, cosi' che i punti a Z=0 restino allineati
+      // fra i due strati (vedi derivazione in makeFlyCamera). Il fattore orizzontale non cambia
+      // (l'inclinazione e' attorno all'asse X del mondo, che resta "destra" per entrambe le camere).
+      [ [groundRenderer, groundCamera, 1], [flyRenderer, flyCamera, Math.cos(FLY_TILT)] ].forEach(function(triple){
+        var renderer = triple[0], camera = triple[1], vFactor = triple[2];
+        if (!renderer) return;
+        var container = renderer.domElement.parentElement;
+        var w = container.clientWidth, h = container.clientHeight;
+        if (!w || !h) return;
+        renderer.setSize(w, h);
+        var aspect = w / h;
+        var halfH = VIEW_HALF * vFactor, halfW = VIEW_HALF * aspect;
+        camera.left = -halfW; camera.right = halfW; camera.top = halfH; camera.bottom = -halfH;
+        camera.updateProjectionMatrix();
+      });
+    }
+
+    function animate(){
+      requestAnimationFrame(animate);
+      if (groundRenderer) groundRenderer.render(groundScene, groundCamera);
+      if (flyRenderer) flyRenderer.render(flyScene, flyCamera);
+    }
+
+    function init(groundContainer, flyContainer){
+      if (typeof THREE === "undefined") return false;
+
+      groundScene = new THREE.Scene();
+      groundCamera = makeGroundCamera();
+      groundRenderer = makeRenderer(groundContainer);
+      applyColorPipeline(groundRenderer);
+      groundScene.environment = makeRoomEnvironment(groundRenderer);
+      groundScene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      var gKey = new THREE.DirectionalLight(0xffffff, 0.7); gKey.position.set(2, 4, 10); groundScene.add(gKey);
+      groundGroup = new THREE.Group();
+      groundScene.add(groundGroup);
+
+      flyScene = new THREE.Scene();
+      flyCamera = makeFlyCamera();
+      flyRenderer = makeRenderer(flyContainer);
+      applyColorPipeline(flyRenderer);
+      flyRenderer.shadowMap.enabled = true;
+      flyRenderer.shadowMap.type = THREE.VSMShadowMap;
+      flyScene.environment = makeRoomEnvironment(flyRenderer);
+      flyScene.add(new THREE.AmbientLight(0xffffff, 0.65));
+      var fKey = new THREE.DirectionalLight(0xffffff, 1.15); fKey.position.set(3, 5, 14); flyScene.add(fKey);
+      fKey.castShadow = true;
+      fKey.shadow.mapSize.set(1024, 1024);
+      fKey.shadow.camera.left = -10; fKey.shadow.camera.right = 10;
+      fKey.shadow.camera.top = 10; fKey.shadow.camera.bottom = -10;
+      fKey.shadow.camera.near = 1; fKey.shadow.camera.far = 40;
+      fKey.shadow.bias = -0.0015;
+      var fRim = new THREE.DirectionalLight(0x88aadd, 0.4); fRim.position.set(-4, -3, 6); flyScene.add(fRim);
+      flyGroup = new THREE.Group();
+      flyScene.add(flyGroup);
+
+      // riceve solo l'ombra della mosca (nessuna texture propria): senza, il corpo sembra
+      // "galleggiare" sopra la griglia invece di poggiarci sopra.
+      var shadowCatcher = new THREE.Mesh(
+        new THREE.PlaneGeometry(46, 46),
+        new THREE.ShadowMaterial({ opacity: 0.35 })
+      );
+      shadowCatcher.receiveShadow = true;
+      shadowCatcher.position.z = -0.01;
+      flyScene.add(shadowCatcher);
+
+      // NOTA: niente EffectComposer/UnrealBloomPass qui (a differenza del pannello cervello).
+      // Il layer della mosca e' un secondo canvas trasparente impilato SOPRA quello del terreno
+      // via CSS (vedi commento in cima a questo IIFE) apposta perche' la mosca non finisca
+      // coperta dai bordi delle celle. UnrealBloomPass pero' scrive alpha=1 su TUTTO il
+      // fullscreen quad del suo composito finale, non solo dove c'e' davvero glow: il risultato
+      // e' che l'intero canvas della mosca diventa opaco (nero dove non c'e' luce, bianco dove
+      // ce n'e' troppa), coprendo completamente la griglia sottostante — verificato: con bloom
+      // attivo la plancia di gioco appariva nera e la mosca "bruciata" bianca. L'occhio resta
+      // comunque lucido grazie a emissive+clearcoat sopra, solo senza il glow via post-processing.
+      window.addEventListener("resize", onResize);
+      if (window.ResizeObserver){
+        new ResizeObserver(onResize).observe(groundContainer);
+      }
+      onResize();
+
+      animate();
+      return true;
+    }
+
+    function buildGround(){
+      var groundMat = new THREE.MeshStandardMaterial({ color: 0x1a2224, roughness: 0.95, metalness: 0.0, transparent:true, opacity:0.85 });
+      var ground = new THREE.Mesh(new THREE.PlaneGeometry(46, 46), groundMat);
+      ground.position.z = -0.02;
+      groundGroup.add(ground);
+
+      var lineMat = new THREE.LineBasicMaterial({ color: 0x3a4a4e });
+      CELLS.forEach(function(cell, i){
+        var half = SPACING * 0.42;
+        var pts = [
+          new THREE.Vector3(cell.x-half, cell.y-half, 0.01), new THREE.Vector3(cell.x+half, cell.y-half, 0.01),
+          new THREE.Vector3(cell.x+half, cell.y-half, 0.01), new THREE.Vector3(cell.x+half, cell.y+half, 0.01),
+          new THREE.Vector3(cell.x+half, cell.y+half, 0.01), new THREE.Vector3(cell.x-half, cell.y+half, 0.01),
+          new THREE.Vector3(cell.x-half, cell.y+half, 0.01), new THREE.Vector3(cell.x-half, cell.y-half, 0.01),
+        ];
+        var geo = new THREE.BufferGeometry().setFromPoints(pts);
+        groundGroup.add(new THREE.LineSegments(geo, lineMat));
+
+        var markerGeo = new THREE.CircleGeometry(0.7, 24);
+        var markerMat = new THREE.MeshBasicMaterial({ color: 0x888888, transparent:true, opacity:0, side:THREE.DoubleSide });
+        var marker = new THREE.Mesh(markerGeo, markerMat);
+        marker.position.set(cell.x, cell.y, 0.03);
+        groundGroup.add(marker);
+        cellMarkers.push(marker);
+      });
+
+      // segna la "casa" di partenza con un anello discreto
+      var ringGeo = new THREE.RingGeometry(0.55, 0.75, 24);
+      var ringMat = new THREE.MeshBasicMaterial({ color: 0x5c6f73, transparent:true, opacity:0.5, side:THREE.DoubleSide });
+      var ring = new THREE.Mesh(ringGeo, ringMat);
+      ring.position.set(HOME.x, HOME.y, 0.02);
+      groundGroup.add(ring);
+    }
+
+    // categoria anatomica raffinata a partire dal nome del body (piu' precisa della "torso"
+    // unica usata per l'esportazione: separa capo/torace/addome cosi' il profilo si segmenta
+    // visivamente invece di restare un'unica sagoma ovale)
+    function categoryForBody(bodyName){
+      var n = (bodyName || "").split("/").pop();
+      if (n === "") return "thorax";
+      if (n === "c_head") return "head";
+      if (n.indexOf("abdomen") === 0) return "abdomen";
+      if (n.indexOf("wing") >= 0) return "wing";
+      if (n.indexOf("eye") >= 0) return "eye";
+      if (n.indexOf("haltere") >= 0) return "haltere";
+      return "limb";
+    }
+
+    // materiali per categoria anatomica: il modello fisico non porta colori realistici (ogni
+    // geom e' grigio uniforme 0.5/0.5/0.5), quindi la colorazione e' scelta qui per somigliare
+    // a una vera drosofila, con toni leggermente diversi fra capo/torace/addome cosi' i tre
+    // segmenti si distinguono invece di fondersi in un'unica sagoma.
+    function materialForCategory(category){
+      switch (category){
+        case "wing":
+          return new THREE.MeshPhysicalMaterial({
+            color: 0xe4ddc4, transparent: true, opacity: 0.42,
+            roughness: 0.15, metalness: 0.0, side: THREE.DoubleSide, depthWrite: false,
+            clearcoat: 0.6, clearcoatRoughness: 0.2,
+          });
+        case "eye":
+          return new THREE.MeshPhysicalMaterial({
+            color: 0xb43030, roughness: 0.25, metalness: 0.25,
+            emissive: 0x4a0d0d, emissiveIntensity: 0.85,
+            clearcoat: 0.8, clearcoatRoughness: 0.15,
+          });
+        case "haltere":
+          return new THREE.MeshStandardMaterial({ color: 0x362a1f, roughness: 0.4, metalness: 0.12 });
+        case "head":
+          return new THREE.MeshStandardMaterial({ color: 0x2c2115, roughness: 0.32, metalness: 0.2 });
+        case "thorax":
+          return new THREE.MeshStandardMaterial({ color: 0x4a3626, roughness: 0.3, metalness: 0.22 });
+        case "abdomen":
+          return new THREE.MeshStandardMaterial({ color: 0x3c2c1d, roughness: 0.3, metalness: 0.2 });
+        default: // limb (zampe, antenne, apparato boccale)
+          return new THREE.MeshStandardMaterial({ color: 0x40311f, roughness: 0.4, metalness: 0.12 });
+      }
+    }
+
+    // scala estetica PER CATEGORIA (non uniforme!): un primo tentativo ingrandiva tutto allo
+    // stesso modo e il torace/capo, gia' grandi, finivano per inglobare zampe/ali/occhi vicini
+    // (il risultato sembrava un unico blob). Qui si ingrandiscono solo le parti sottili che
+    // altrimenti si perderebbero alla scala della griglia, lasciando il corpo alla sua proporzione naturale.
+    function scaleForCategory(category){
+      switch (category){
+        case "limb": return 1.9;
+        case "wing": return 1.3;
+        case "haltere": return 1.6;
+        case "eye": return 1.15;
+        default: return 1.0; // head/thorax/abdomen: dimensione anatomica reale
+      }
+    }
+
+    function buildFlyRig(geomData){
+      var verts = new Float32Array(base64ToBuffer(geomData.verts_b64));
+      var faces = new Uint32Array(base64ToBuffer(geomData.faces_b64));
+
+      for (var i = 0; i < geomData.body_names.length; i++){
+        var g = new THREE.Group();
+        bodyGroups[i] = g;
+        if (i > 0) flyGroup.add(g);
+      }
+
+      geomData.geoms.forEach(function(entry){
+        if (entry.body === 0) return;
+        var category = categoryForBody(geomData.body_names[entry.body]);
+        var mesh;
+        if (entry.vert_cnt){
+          var vStart = entry.vert_off * 3, vCount = entry.vert_cnt * 3;
+          var positions = verts.slice(vStart, vStart + vCount);
+          var fStart = entry.face_off * 3, fCount = entry.face_cnt * 3;
+          var localFaces = new Uint32Array(fCount);
+          for (var k = 0; k < fCount; k++) localFaces[k] = faces[fStart + k] - entry.vert_off;
+
+          var geo = new THREE.BufferGeometry();
+          geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+          geo.setIndex(new THREE.BufferAttribute(localFaces, 1));
+          geo.computeVertexNormals();
+          mesh = new THREE.Mesh(geo, materialForCategory(category));
+        } else if (entry.type === 3 && entry.size){
+          // punta della zampa (tarso finale): nel modello fisico e' una capsula senza mesh
+          // propria (serve solo per il contatto col terreno); qui la disegnamo con una piccola
+          // sfera cosi' la zampa non sembra "tagliata" all'ultimo segmento
+          var r = Math.max(entry.size[0] || 0.02, 0.018);
+          mesh = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), materialForCategory(category));
+        } else {
+          return;
+        }
+        mesh.position.set(entry.pos[0], entry.pos[1], entry.pos[2]);
+        mesh.quaternion.set(entry.quat[1], entry.quat[2], entry.quat[3], entry.quat[0]);
+        mesh.scale.setScalar(scaleForCategory(category));
+        mesh.castShadow = true;
+        bodyGroups[entry.body].add(mesh);
+      });
+
+      applyStaticPose();
+    }
+
+    // posa di riposo (primo frame di un cammino breve), usata come stato iniziale/di attesa
+    function applyStaticPose(offset){
+      offset = offset || currentPos;
+      var refWalk = walksData ? walksData.walks["5.0_0.0"] : null;
+      if (!refWalk) return;
+      var buf = base64ToBuffer(refWalk.data_b64);
+      var data = new Float32Array(buf);
+      setBodiesFromFrame(data, 0, offset);
+    }
+
+    function setBodiesFromFrame(data, frameIdx, offset){
+      var nBodies = 69;
+      var base = frameIdx * nBodies * 7;
+      for (var b = 0; b < nBodies; b++){
+        var off = base + b * 7;
+        var grp = bodyGroups[b + 1];
+        if (!grp) continue;
+        grp.position.set(data[off] + offset.x, data[off+1] + offset.y, data[off+2]);
+        grp.quaternion.set(data[off+4], data[off+5], data[off+6], data[off+3]);
+      }
+    }
+
+    function lerpBodiesFromFrames(data, i0, i1, t, offset){
+      var nBodies = 69;
+      var base0 = i0 * nBodies * 7, base1 = i1 * nBodies * 7;
+      var p0 = new THREE.Vector3(), p1 = new THREE.Vector3();
+      var q0 = new THREE.Quaternion(), q1 = new THREE.Quaternion(), qOut = new THREE.Quaternion();
+      for (var b = 0; b < nBodies; b++){
+        var o0 = base0 + b * 7, o1 = base1 + b * 7;
+        var grp = bodyGroups[b + 1];
+        if (!grp) continue;
+        p0.set(data[o0]+offset.x, data[o0+1]+offset.y, data[o0+2]);
+        p1.set(data[o1]+offset.x, data[o1+1]+offset.y, data[o1+2]);
+        grp.position.lerpVectors(p0, p1, t);
+        q0.set(data[o0+4], data[o0+5], data[o0+6], data[o0+3]);
+        q1.set(data[o1+4], data[o1+5], data[o1+6], data[o1+3]);
+        qOut.copy(q0).slerp(q1, t);
+        grp.quaternion.copy(qOut);
+      }
+    }
+
+    function updateCellMarker(i, mark){
+      var m = cellMarkers[i];
+      if (!m) return;
+      if (!mark){ m.material.opacity = 0; return; }
+      var cssVar = function(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || "#888"; };
+      m.material.color = new THREE.Color(cssVar(mark === "fly" ? "--reward" : "--accent"));
+      m.material.opacity = 0.55;
+    }
+
+    function playClip(dx, dy, offset){
+      return new Promise(function(resolve){
+        if (!walksData){ resolve(); return; }
+        var key = vectorKey(dx, dy);
+        var walk = walksData.walks[key];
+        if (!walk){ resolve(); return; }
+        var buf = base64ToBuffer(walk.data_b64);
+        var data = new Float32Array(buf);
+        var nFrames = walk.n_frames;
+        var t0 = performance.now();
+        var totalDuration = (nFrames - 1) * frameDt * 1000 / PLAYBACK_SPEED;
+        if (totalDuration <= 0){ setBodiesFromFrame(data, 0, offset); resolve(); return; }
+
+        function step(now){
+          var elapsed = now - t0;
+          var frac = Math.min(1, elapsed / totalDuration);
+          var fpos = frac * (nFrames - 1);
+          var i0 = Math.floor(fpos), i1 = Math.min(nFrames - 1, i0 + 1);
+          var t = fpos - i0;
+          lerpBodiesFromFrames(data, i0, i1, t, offset);
+          if (frac < 1){
+            requestAnimationFrame(step);
+          } else {
+            resolve();
+          }
+        }
+        requestAnimationFrame(step);
+      });
+    }
+
+    function walkToCell(cellIndex){
+      return loadPromise.then(function(){
+        var target = CELLS[cellIndex];
+        var dx = target.x - currentPos.x, dy = target.y - currentPos.y;
+        var startOffset = { x: currentPos.x, y: currentPos.y };
+        return playClip(dx, dy, startOffset).then(function(){
+          currentPos = { x: target.x, y: target.y };
+        });
+      });
+    }
+
+    function load(groundContainer, flyContainer){
+      if (!init(groundContainer, flyContainer)) return Promise.resolve(false);
+      buildGround();
+      loadPromise = Promise.all([
+        fetch("fly_geometry.json").then(function(r){ return r.json(); }),
+        fetch("walks.json").then(function(r){ return r.json(); }),
+      ]).then(function(results){
+        var geomData = results[0];
+        walksData = results[1];
+        frameDt = walksData.frame_dt || 0.015;
+        buildFlyRig(geomData);
+        ready = true;
+        return true;
+      }).catch(function(err){ console.error("arena3d load error", err); return false; });
+      return loadPromise;
+    }
+
+    return { load: load, walkToCell: walkToCell, updateCellMarker: updateCellMarker };
+  })();
+
+  // ---------- UI ----------
+  var boardEl = document.getElementById("board");
+  var cells = [];
+  for (var i=0;i<9;i++){
+    var c = document.createElement("div");
+    c.className = "cell";
+    c.dataset.i = i;
+    c.addEventListener("click", onCellClick);
+    boardEl.appendChild(c);
+    cells.push(c);
+  }
+
+  function render(){
+    for (var i=0;i<9;i++){
+      var c = cells[i];
+      var v = state.board[i];
+      c.textContent = v===YOU ? "🖐" : v===FLY ? "🪰" : "";
+      c.className = "cell" + (v?" filled":"") + (v===YOU?" you":v===FLY?" fly":"") + (state.busy?" disabled":"");
+    }
+    document.getElementById("gameNum").textContent = state.gameNum;
+    var pill = document.getElementById("turnPill");
+    if (winner(state.board)){
+      pill.textContent = "partita finita";
+      pill.className = "turn-pill";
+    } else {
+      var flyTurn = turnIsFly();
+      pill.textContent = flyTurn ? "sta pensando la mosca…" : "tocca a te";
+      pill.className = "turn-pill " + (flyTurn ? "fly" : "you");
+    }
+  }
+
+  function turnIsFly(){
+    var filled = state.board.filter(function(v){return v!==0;}).length;
+    var flyGoesFirst = !state.youStart;
+    return flyGoesFirst ? (filled % 2 === 0) : (filled % 2 === 1);
+  }
+
+  function updateScoreboard(){
+    document.getElementById("scoreYou").textContent = state.scores.you;
+    document.getElementById("scoreFly").textContent = state.scores.fly;
+    document.getElementById("scoreDraw").textContent = state.scores.draw;
+  }
+
+  function updateBrainPanel(evalResult, kc){
+    Brain3D.updateActivity(evalResult ? evalResult.out : null, kc || null);
+
+    var list = document.getElementById("mbonList");
+    list.innerHTML = "";
+    if (!evalResult) return;
+    var d = state.circuit;
+    var rows = d.mbon_compartment.map(function(name, j){
+      return {name:name || ("mbon_"+j), out:evalResult.out[j], valence:d.mbon_valence[j]};
+    });
+    rows.sort(function(a,b){ return Math.abs(b.out)-Math.abs(a.out); });
+    rows = rows.slice(0,3);
+    var maxAbs = Math.max.apply(null, rows.map(function(r){return Math.abs(r.out);})) || 1;
+    rows.forEach(function(r){
+      var row = document.createElement("div");
+      row.className = "mbon-row";
+      var color = r.valence > 0.05 ? "var(--reward)" : r.valence < -0.05 ? "var(--punish)" : "var(--muted-2)";
+      var widthPct = Math.min(100, (Math.abs(r.out)/maxAbs)*100);
+      row.innerHTML =
+        '<div class="mbon-name" title="'+r.name+'">'+r.name+'</div>' +
+        '<div class="mbon-track"><div class="mbon-fill" style="width:'+widthPct+'%;background:'+color+';"></div></div>' +
+        '<div class="mbon-val">'+Math.round(r.out)+' spk</div>';
+      list.appendChild(row);
+    });
+  }
+
+  function flashLearning(outcome){
+    var el = document.getElementById("flash");
+    el.style.background = outcome==="win" ? "radial-gradient(circle at 50% 30%, var(--punish), transparent 70%)" :
+                           outcome==="lose" ? "radial-gradient(circle at 50% 30%, var(--reward), transparent 70%)" :
+                           "radial-gradient(circle at 50% 30%, var(--accent), transparent 70%)";
+    el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+  }
+
+  // accende i 223 DAN reali (PAM/PPL1) nel pannello 3D esattamente nel momento in cui la
+  // dopamina reale entrerebbe in gioco nella mosca vera: qui, non durante la valutazione della
+  // mossa. daReward/daPunish sono lo stesso identico segnale che reinforce() applica davvero
+  // alle sinapsi (daSignalFor), solo visualizzato invece che solo usato in silenzio.
+  //
+  // danFlashToken: i passi di questa animazione sono scanditi da setTimeout, che sotto carico
+  // (rendering WebGL pesante) puo' arrivare in ritardo rispetto ai 1400ms che endGame() aspetta
+  // prima di azzerare la scena per la partita successiva -- senza protezione, un passo tardivo
+  // potrebbe riaccendere i DAN subito dopo che sono stati spenti, restando bloccati accesi.
+  // Ogni chiamata cattura la propria "generazione"; azzerare la scena incrementa il contatore
+  // globale, cosi' ogni passo ancora in coda di una chiamata precedente si riconosce superato
+  // e si ferma da solo invece di sovrascrivere un reset piu' recente.
+  var danFlashToken = 0;
+  function animateDanFlash(outcome){
+    var da = daSignalFor(outcome);
+    var myToken = ++danFlashToken;
+    var STEPS = 10, STEP_MS = 45;
+    var step = 0;
+    function tick(){
+      if (myToken !== danFlashToken) return; // superata da un reset o da un'altra chiamata
+      step++;
+      var t = Math.min(1, step/STEPS);
+      Brain3D.updateDanActivity(da.daReward*t, da.daPunish*t);
+      if (step < STEPS) setTimeout(tick, STEP_MS);
+    }
+    tick();
+  }
+
+  // accende i DN reali (vedi computeDnActivity) esattamente quando la mosca comincia a camminare
+  // verso la cella scelta -- IN AGGIUNTA al bagliore "la mosca pensa" gia' lasciato acceso da
+  // animateThinking sui KC/MBON, non al posto suo. A differenza di animateDanFlash (durata fissa,
+  // 450ms), qui la durata del cammino varia molto in base alla distanza sulla griglia (misurato:
+  // da ~240ms per una cella adiacente fino a ~3.1s per il primo cammino dalla posizione di riposo)
+  // quindi il bagliore resta acceso finche' non risolve holdPromise (la stessa promise di
+  // FlyArena.walkToCell) invece di un timer fisso, poi si spegne con una breve dissolvenza. Stesso
+  // pattern di generazione/token di danFlashToken per non restare bloccato acceso se una partita
+  // finisce (e la scena si azzera) durante un cammino ancora in corso.
+  var dnGlowToken = 0;
+  function animateDnGlow(mbonSpk, holdPromise){
+    var intensities = computeDnActivity(mbonSpk);
+    if (!intensities) return;
+    var myToken = ++dnGlowToken;
+    var STEPS = 6, STEP_MS = 40;
+    function scaled(t){
+      var out = new Float32Array(intensities.length);
+      for (var i=0;i<intensities.length;i++) out[i] = intensities[i]*t;
+      return out;
+    }
+    var up = 0;
+    function rampUp(){
+      if (myToken !== dnGlowToken) return;
+      up++;
+      Brain3D.updateDnActivity(scaled(Math.min(1, up/STEPS)));
+      if (up < STEPS) setTimeout(rampUp, STEP_MS);
+    }
+    rampUp();
+    holdPromise.then(function(){
+      if (myToken !== dnGlowToken) return;
+      var down = 0;
+      function rampDown(){
+        if (myToken !== dnGlowToken) return;
+        down++;
+        Brain3D.updateDnActivity(scaled(Math.max(0, 1 - down/STEPS)));
+        if (down < STEPS) setTimeout(rampDown, STEP_MS);
+      }
+      rampDown();
+    });
+  }
+
+  function setMsg(text, cls){
+    var m = document.getElementById("msg");
+    m.textContent = text;
+    m.className = "msg" + (cls?(" "+cls):"");
+  }
+
+  function endGame(result){
+    state.board.forEach(function(_,i){ if(result.line && result.line.indexOf(i)>=0) cells[i].classList.add("win"); });
+    var outcomeForFly = result.who === "draw" ? "draw" : (result.who===FLY ? "win" : "lose");
+    if (result.who === "draw"){ state.scores.draw++; setMsg("Pareggio.", "draw"); }
+    else if (result.who === YOU){ state.scores.you++; setMsg("Hai vinto tu.", "lose"); }
+    else { state.scores.fly++; setMsg("Ha vinto la mosca.", "win"); }
+    updateScoreboard();
+    reinforce(outcomeForFly);
+    flashLearning(outcomeForFly);
+    animateDanFlash(outcomeForFly);
+    state.busy = true;
+    render();
+    setTimeout(function(){
+      state.board = Array(9).fill(0);
+      state.youStart = !state.youStart;
+      state.gameNum++;
+      state.busy = false;
+      cells.forEach(function(c){ c.classList.remove("win"); });
+      for (var i=0;i<9;i++) FlyArena.updateCellMarker(i, null);
+      render();
+      danFlashToken++; // invalida eventuali passi di animateDanFlash ancora in coda in ritardo
+      dnGlowToken++; // idem per animateDnGlow, se una partita finisce durante un cammino
+      updateBrainPanel(null);
+      setWhyText("Il ragionamento della mosca comparirà qui, quando toccherà a lei giocare.");
+      maybeFlyMove();
+    }, 1400);
+  }
+
+  // Anima l'evoluzione reale della simulazione a spiking gia' calcolata per la mossa scelta
+  // (finalEvalResult.events, la STESSA usata da flyDecide per decidere: nessun ricalcolo, nessuno
+  // scarto possibile fra quello che si vede e quello che la mosca usa davvero) invece di un ordine
+  // di rivelazione arbitrario: ogni Kenyon cell attivo si accende esattamente quando la sua prima
+  // spike reale e' avvenuta nella simulazione, e i MBON mostrano il vero conteggio cumulativo di
+  // spike fino a quell'istante. L'ultimo fotogramma e' sempre esattamente finalEvalResult (stessi
+  // dati, nessun ricalcolo) sulla maschera strutturale kc completa.
+  function animateThinking(kc, finalEvalResult, onDone){
+    var d = state.circuit;
+    var ev = finalEvalResult.events;
+    var tRun = finalEvalResult.tRunMs;
+    var nKc = d.n_kc, nMbon = d.n_mbon;
+
+    var firstSpike = new Float64Array(nKc).fill(Infinity);
+    for (var e=0;e<ev.evNeurons.length;e++){
+      var nidx = ev.evNeurons[e];
+      if (nidx < nKc && ev.evTimes[e] < firstSpike[nidx]) firstSpike[nidx] = ev.evTimes[e];
+    }
+
+    var STEPS = 16, STEP_MS = 55;
+    var step = 0;
+    setMsg("La mosca sta pensando…");
+    function tick(){
+      step++;
+      if (step >= STEPS){
+        updateBrainPanel(finalEvalResult, kc);
+        onDone();
+        return;
+      }
+      var tcut = (step/STEPS) * tRun;
+      var revealed = new Float64Array(nKc);
+      for (var i=0;i<nKc;i++) if (kc[i] && firstSpike[i] <= tcut) revealed[i] = 1;
+      var mbonUpTo = new Float64Array(nMbon);
+      for (var e2=0;e2<ev.evNeurons.length;e2++){
+        var nidx2 = ev.evNeurons[e2];
+        if (ev.evTimes[e2] <= tcut && nidx2 >= nKc && nidx2 < nKc+nMbon) mbonUpTo[nidx2-nKc]++;
+      }
+      updateBrainPanel(valueOf(mbonUpTo), revealed);
+      setTimeout(tick, STEP_MS);
+    }
+    tick();
+  }
+
+  function maybeFlyMove(){
+    if (state.busy) return;
+    if (winner(state.board)) return;
+    if (!turnIsFly()) return;
+    state.busy = true; render();
+    setTimeout(function(){
+      var temperature = parseFloat(document.getElementById("temp").value);
+      var decision = flyDecide(state.board, temperature);
+      setWhyText(explainDecision(decision));
+      animateThinking(decision.kc, decision.evalResult, function(){
+        setMsg("La mosca sta camminando verso la cella " + (decision.cell+1) + "…");
+        var walkPromise = FlyArena.walkToCell(decision.cell);
+        animateDnGlow(decision.evalResult.out, walkPromise);
+        walkPromise.then(function(){
+          state.board[decision.cell] = FLY;
+          accumulateEligibility(decision.evalResult.events.spikeCounts.subarray(0, state.circuit.n_kc));
+          FlyArena.updateCellMarker(decision.cell, "fly");
+          var cellEl = cells[decision.cell];
+          cellEl.classList.add("pop");
+          state.busy = false;
+          render();
+          setMsg("La mosca ha giocato la cella " + (decision.cell+1) + ".");
+          var w = winner(state.board);
+          if (w) endGame(w);
+        });
+      });
+    }, 420);
+  }
+
+  function onCellClick(e){
+    if (state.busy) return;
+    if (turnIsFly()) return;
+    var i = parseInt(e.currentTarget.dataset.i, 10);
+    if (state.board[i] !== 0) return;
+    state.board[i] = YOU;
+    cells[i].classList.add("pop");
+    FlyArena.updateCellMarker(i, "you");
+    render();
+    setMsg("");
+    var w = winner(state.board);
+    if (w){ endGame(w); return; }
+    maybeFlyMove();
+  }
+
+  document.getElementById("temp").addEventListener("input", function(e){
+    document.getElementById("tempVal").textContent = parseFloat(e.target.value).toFixed(2);
+  });
+  document.getElementById("resetStats").addEventListener("click", function(){
+    state.scores = {you:0, fly:0, draw:0};
+    updateScoreboard();
+    saveBrain();
+  });
+  document.getElementById("resetBrain").addEventListener("click", function(){
+    if (!state.spiking) return;
+    resetPlasticWeights();
+    setMsg("Cervello riportato alla connettivita' strutturale reale (senza apprendimento).");
+    saveBrain();
+  });
+
+  function wireModal(overlayId, openBtnId, closeBtnId){
+    var overlay = document.getElementById(overlayId);
+    var openBtn = document.getElementById(openBtnId);
+    var closeBtn = document.getElementById(closeBtnId);
+    function open(){ overlay.hidden = false; }
+    function close(){ overlay.hidden = true; }
+    openBtn.addEventListener("click", open);
+    closeBtn.addEventListener("click", close);
+    overlay.addEventListener("click", function(e){ if (e.target === overlay) close(); });
+    document.addEventListener("keydown", function(e){ if (e.key === "Escape" && !overlay.hidden) close(); });
+  }
+  wireModal("howModalOverlay", "howItWorksBtn", "howModalClose");
+  wireModal("colorModalOverlay", "whyColorBtn", "colorModalClose");
+
+  function start(){
+    loadCircuit(function(){
+      render();
+      updateBrainPanel(null);
+      var brainContainer = document.getElementById("brain3d");
+      Brain3D.load(brainContainer, state.circuit.mbon_valence).then(function(ok){
+        var loading = document.getElementById("brain3dLoading");
+        if (!loading) return;
+        if (ok) loading.style.display = "none";
+        else loading.textContent = "vista 3D non disponibile in questo browser";
+      });
+      var arenaGroundEl = document.getElementById("arenaGround");
+      var arenaFlyEl = document.getElementById("arenaFly");
+      FlyArena.load(arenaGroundEl, arenaFlyEl).then(function(ok){
+        var loading = document.getElementById("arena3dLoading");
+        if (!loading) return;
+        if (ok) loading.style.display = "none";
+        else loading.textContent = "arena 3D non disponibile in questo browser";
+      });
+      maybeFlyMove();
+    });
+  }
+
+  if (window.claude && window.claude.hot){
+    window.claude.hot.ready ? window.claude.hot.ready(start) : start();
+  } else {
+    start();
+  }
+})();
+</script>
