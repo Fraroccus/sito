@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <base href="/neuromechfly-tris/">
 <title>Tris nel Corpo Fungiforme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -127,7 +128,18 @@
     gap:20px;
     align-items:start;
   }
-  @media (max-width: 760px){ .grid{grid-template-columns: 1fr;} }
+  @media (max-width: 880px){
+    body{
+      padding: 16px 12px 48px;
+    }
+    .grid{
+      grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .card{
+      padding: 16px;
+    }
+  }
 
   .card{
     background:var(--surface);
@@ -280,6 +292,7 @@
     overflow:hidden;
     margin-bottom:14px;
     cursor:grab;
+    touch-action:none;
   }
   .brain3d-wrap:active{cursor:grabbing;}
   .brain3d-wrap canvas{display:block; width:100%; height:100%;}
