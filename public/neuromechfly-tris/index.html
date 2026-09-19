@@ -77,11 +77,14 @@
   }
   @media (max-width: 880px){
     body:not(.view-side-by-side){
-      padding: 12px 10px 36px;
+      padding: 16px 12px 48px;
     }
     .grid:not(.force-side-by-side){
       grid-template-columns: 1fr;
-      gap: 12px;
+      gap: 16px;
+    }
+    .card{
+      padding: 16px;
     }
   }
 
@@ -93,136 +96,9 @@
     gap: 16px !important;
     min-width: 760px !important;
   }
-
-  /* Vista In Colonna (Verticale compatta per contenere entrambe le finestre a schermo) */
-  body.view-stacked{
-    padding: 10px 8px 30px !important;
-  }
-  body.view-stacked header{
-    margin-bottom: 8px !important;
-  }
-  body.view-stacked h1{
-    font-size: 1.05rem !important;
-    margin: 0 0 3px !important;
-  }
-  body.view-stacked .provenance{
-    font-size: 0.65rem !important;
-    gap: 3px 8px !important;
-    margin-top: 4px !important;
-  }
-  body.view-stacked .header-top{
-    gap: 6px 10px !important;
-  }
-  body.view-stacked .how-btn{
-    font-size: 0.7rem !important;
-    padding: 3px 8px !important;
-  }
-  body.view-stacked .grid,
   .grid.force-stacked{
     grid-template-columns: 1fr !important;
-    gap: 8px !important;
     min-width: 0 !important;
-  }
-  body.view-stacked .card{
-    padding: 10px 12px !important;
-    border-radius: 12px !important;
-  }
-  body.view-stacked .card + .card{
-    margin-top: 8px !important;
-  }
-  body.view-stacked .card h2{
-    font-size: 0.66rem !important;
-    margin: 0 0 6px !important;
-  }
-  body.view-stacked .status-row{
-    margin-bottom: 6px !important;
-    min-height: 22px !important;
-  }
-  body.view-stacked .turn-pill{
-    font-size: 0.72rem !important;
-    padding: 2px 8px !important;
-  }
-  body.view-stacked .board-stage{
-    max-width: 210px !important;
-    max-height: 210px !important;
-    aspect-ratio: 1 !important;
-    margin: 0 auto 6px !important;
-  }
-  body.view-stacked .board{
-    gap: 6px !important;
-  }
-  body.view-stacked .cell{
-    font-size: 1.6rem !important;
-    border-radius: 8px !important;
-  }
-  body.view-stacked .msg{
-    font-size: 0.76rem !important;
-    min-height: 18px !important;
-    margin: 2px 0 4px !important;
-  }
-  body.view-stacked .sub-note{
-    font-size: 0.62rem !important;
-    margin: 0 0 6px !important;
-  }
-  body.view-stacked .controls{
-    gap: 6px !important;
-  }
-  body.view-stacked .controls button{
-    font-size: 0.72rem !important;
-    padding: 4px 8px !important;
-  }
-  body.view-stacked .scoreboard{
-    margin-top: 8px !important;
-    gap: 6px !important;
-  }
-  body.view-stacked .score-tile{
-    padding: 4px 6px !important;
-  }
-  body.view-stacked .score-tile .n{
-    font-size: 1.1rem !important;
-  }
-  body.view-stacked .score-tile .l{
-    font-size: 0.58rem !important;
-  }
-  body.view-stacked .why-box{
-    padding: 6px 10px !important;
-    margin-bottom: 6px !important;
-    min-height: 0 !important;
-    border-radius: 8px !important;
-  }
-  body.view-stacked .why-label{
-    font-size: 0.62rem !important;
-    margin-bottom: 2px !important;
-  }
-  body.view-stacked .why-text{
-    font-size: 0.72rem !important;
-    line-height: 1.35 !important;
-    margin: 0 !important;
-  }
-  body.view-stacked .brain3d-wrap{
-    height: 160px !important;
-    max-height: 160px !important;
-    aspect-ratio: auto !important;
-    margin-bottom: 6px !important;
-  }
-  body.view-stacked .mbon-list{
-    max-height: 90px !important;
-    overflow-y: auto !important;
-    gap: 3px !important;
-    padding-right: 4px !important;
-  }
-  body.view-stacked .mbon-row{
-    grid-template-columns: 85px 1fr 38px !important;
-    gap: 6px !important;
-  }
-  body.view-stacked .mbon-name{
-    font-size: 0.65rem !important;
-  }
-  body.view-stacked .mbon-track{
-    height: 7px !important;
-  }
-  body.view-stacked .mbon-val{
-    font-size: 0.64rem !important;
   }
 
   .card{
@@ -2358,16 +2234,15 @@ function makeRoomEnvironment(renderer){
     sessionStorage.setItem("nmf_tris_layout", mode);
     if (!mainGrid) return;
     if (mode === "mobile"){
-      document.body.classList.add("view-stacked");
       document.body.classList.remove("view-side-by-side");
+      document.body.classList.remove("view-stacked");
       mainGrid.classList.add("force-stacked");
       mainGrid.classList.remove("force-side-by-side");
       if (layoutToggleIcon) layoutToggleIcon.textContent = "📱";
       if (layoutToggleText) layoutToggleText.textContent = "Vista: In colonna";
-      if (layoutToggleBtn) layoutToggleBtn.title = "Vista a colonna singola (verticale). Clicca per passare alla vista affiancata (desktop zoomata).";
+      if (layoutToggleBtn) layoutToggleBtn.title = "Visualizzazione a colonna singola (mobile). Clicca per passare alla visualizzazione affiancata (desktop).";
       if (scrollHint) scrollHint.style.display = "none";
-      // Viewport leggermente meno zoomato (width=520) per mostrare entrambe le finestre contemporaneamente a schermo
-      setViewportMeta("width=520, initial-scale=0.75, user-scalable=yes");
+      setViewportMeta("width=device-width, initial-scale=1.0, viewport-fit=cover");
       applyIframeScaling("mobile");
     } else {
       document.body.classList.add("view-side-by-side");
@@ -2376,7 +2251,7 @@ function makeRoomEnvironment(renderer){
       mainGrid.classList.remove("force-stacked");
       if (layoutToggleIcon) layoutToggleIcon.textContent = "💻";
       if (layoutToggleText) layoutToggleText.textContent = "Vista: Affiancata";
-      if (layoutToggleBtn) layoutToggleBtn.title = "Vista affiancata (desktop zoomata). Clicca per passare alla vista a colonna singola (verticale).";
+      if (layoutToggleBtn) layoutToggleBtn.title = "Visualizzazione affiancata (desktop). Clicca per passare alla visualizzazione a colonna singola (mobile).";
       if (scrollHint) scrollHint.style.display = "none";
       // Viewport zoomato in fuori (width=1040) per vedere entrambe le finestre affiancate senza scroll orizzontale
       setViewportMeta("width=1040, initial-scale=0.38, user-scalable=yes");
