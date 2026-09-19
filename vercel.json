@@ -6,7 +6,15 @@
       "destination": "/api/data"
     },
     {
-      "source": "/(.*)",
+      "source": "/neuromechfly-tris",
+      "destination": "/neuromechfly-tris/index.html"
+    },
+    {
+      "source": "/neuromechfly-tris/",
+      "destination": "/neuromechfly-tris/index.html"
+    },
+    {
+      "source": "/((?!api|neuromechfly-tris).*)",
       "destination": "/index.html"
     }
   ]

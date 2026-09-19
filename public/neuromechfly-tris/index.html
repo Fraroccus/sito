@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <meta charset="utf-8">
+<base href="/neuromechfly-tris/">
 <title>Tris nel Corpo Fungiforme</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -697,11 +698,30 @@ function makeRoomEnvironment(renderer){
     };
   }
 
+  var REMOTE_FALLBACK_BASE = "https://raw.githubusercontent.com/Fraroccus/moscatris/main/";
+
+  function loadSmartJson(filename){
+    return fetch(filename)
+      .then(function(res){
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        var ct = res.headers.get("content-type") || "";
+        if (ct.includes("text/html")) throw new Error("SPA 404 rewrite detected");
+        return res.json();
+      })
+      .catch(function(err){
+        console.warn("Caricamento locale fallito per " + filename + ", fallback da GitHub moscatris:", err);
+        return fetch(REMOTE_FALLBACK_BASE + filename).then(function(r){
+          if (!r.ok) throw new Error("Fallback fallito per " + filename + ": " + r.status);
+          return r.json();
+        });
+      });
+  }
+
   function loadCircuit(cb){
     Promise.all([
-      fetch("circuit.json").then(function(r){ return r.json(); }),
-      fetch("spiking_connectivity.json").then(function(r){ return r.json(); }),
-      fetch("mbon_dn_connectivity.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+      loadSmartJson("circuit.json"),
+      loadSmartJson("spiking_connectivity.json"),
+      loadSmartJson("mbon_dn_connectivity.json").catch(function(){ return null; }),
     ]).then(function(results){
       var d = results[0], sc = results[1], mdn = results[2];
       state.circuit = d;
@@ -718,6 +738,9 @@ function makeRoomEnvironment(renderer){
       document.getElementById("statKC").textContent = d.n_kc;
       document.getElementById("statMBON").textContent = d.n_mbon;
       updateScoreboard();
+      cb();
+    }).catch(function(err){
+      console.error("Errore critico loadCircuit:", err);
       cb();
     });
   }
@@ -1417,7 +1440,34 @@ function makeRoomEnvironment(renderer){
       var loader = new GLTFLoader();
       loader.setDRACOLoader(dracoLoader);
       return new Promise(function(resolve, reject){
-        loader.load(url, function(gltf){ resolve(gltf.scene); }, undefined, reject);
+        // Pre-check if local URL returns HTML (Vercel SPA rewrite) or 404
+        fetch(url, { method: "HEAD" }).then(function(headRes){
+          var ct = headRes.headers.get("content-type") || "";
+          if (!headRes.ok || ct.includes("text/html")) {
+            console.warn("Local GLB returned HTML/404, loading from GitHub repository fallback...");
+            loader.load(REMOTE_FALLBACK_BASE + url, function(gltf){
+              resolve(gltf.scene);
+            }, undefined, function(err){
+              console.error("Remote GLB fallback failed:", err);
+              reject(err);
+            });
+            return;
+          }
+          loader.load(url, function(gltf){
+            resolve(gltf.scene);
+          }, undefined, function(loadErr){
+            console.warn("Local GLB parse failed, falling back to GitHub:", loadErr);
+            loader.load(REMOTE_FALLBACK_BASE + url, function(gltf){
+              resolve(gltf.scene);
+            }, undefined, reject);
+          });
+        }).catch(function(){
+          loader.load(REMOTE_FALLBACK_BASE + url, function(gltf){
+            resolve(gltf.scene);
+          }, undefined, function(err){
+            loader.load(url, function(gltf){ resolve(gltf.scene); }, undefined, reject);
+          });
+        });
       });
     }
 
@@ -1425,9 +1475,9 @@ function makeRoomEnvironment(renderer){
       if (!init(container)) return Promise.resolve(false);
       return Promise.all([
         loadGlb("mbon_meshes.glb"),
-        fetch("kc_points.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
-        fetch("dan_points.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
-        fetch("dn_points.json").then(function(r){ return r.json(); }).catch(function(){ return null; }),
+        loadSmartJson("kc_points.json").catch(function(){ return null; }),
+        loadSmartJson("dan_points.json").catch(function(){ return null; }),
+        loadSmartJson("dn_points.json").catch(function(){ return null; }),
       ]).then(function(results){
         var gltfScene = results[0], pointsData = results[1], danData = results[2], dnData = results[3];
         buildMeshes(gltfScene, mbonValence);
@@ -1842,8 +1892,8 @@ function makeRoomEnvironment(renderer){
       if (!init(groundContainer, flyContainer)) return Promise.resolve(false);
       buildGround();
       loadPromise = Promise.all([
-        fetch("fly_geometry.json").then(function(r){ return r.json(); }),
-        fetch("walks.json").then(function(r){ return r.json(); }),
+        loadSmartJson("fly_geometry.json"),
+        loadSmartJson("walks.json"),
       ]).then(function(results){
         var geomData = results[0];
         walksData = results[1];
@@ -2159,12 +2209,17 @@ function makeRoomEnvironment(renderer){
       render();
       updateBrainPanel(null);
       var brainContainer = document.getElementById("brain3d");
-      Brain3D.load(brainContainer, state.circuit.mbon_valence).then(function(ok){
-        var loading = document.getElementById("brain3dLoading");
-        if (!loading) return;
-        if (ok) loading.style.display = "none";
-        else loading.textContent = "vista 3D non disponibile in questo browser";
-      });
+      if (state.circuit && state.circuit.mbon_valence) {
+        Brain3D.load(brainContainer, state.circuit.mbon_valence).then(function(ok){
+          var loading = document.getElementById("brain3dLoading");
+          if (!loading) return;
+          if (ok) loading.style.display = "none";
+          else loading.textContent = "vista 3D non disponibile in questo browser";
+        }).catch(function(){
+          var loading = document.getElementById("brain3dLoading");
+          if (loading) loading.textContent = "Caricamento 3D fallito. Ricarica la pagina.";
+        });
+      }
       var arenaGroundEl = document.getElementById("arenaGround");
       var arenaFlyEl = document.getElementById("arenaFly");
       FlyArena.load(arenaGroundEl, arenaFlyEl).then(function(ok){
@@ -2172,6 +2227,9 @@ function makeRoomEnvironment(renderer){
         if (!loading) return;
         if (ok) loading.style.display = "none";
         else loading.textContent = "arena 3D non disponibile in questo browser";
+      }).catch(function(){
+        var loading = document.getElementById("arena3dLoading");
+        if (loading) loading.textContent = "Caricamento arena fallito. Ricarica la pagina.";
       });
       maybeFlyMove();
     });
