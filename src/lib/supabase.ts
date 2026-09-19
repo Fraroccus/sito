@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { Percorso, Collaboration } from '../types';
+import { Percorso, Collaboration, Progetto } from '../types';
 
 const rawUrl = (import.meta.env.VITE_SUPABASE_URL || '').trim();
 const rawKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || '').trim();
@@ -295,5 +295,140 @@ export async function deleteCollaborationFromSupabase(id: string) {
     await withTimeout(Promise.resolve(query), 3000);
   } catch (err: any) {
     isSupabaseTemporarilyOffline = true;
+  }
+}
+
+/**
+ * Fetch progetti from Supabase database with fallback if table does not exist
+ */
+export async function fetchProgettiFromSupabase(): Promise<Progetto[] | null> {
+  if (!supabase || isSupabaseTemporarilyOffline) return null;
+  try {
+    const query = supabase
+      .from('progetti')
+      .select('*')
+      .order('position', { ascending: true, nullsFirst: false });
+
+    const { data, error } = await withTimeout(Promise.resolve(query), 3500);
+
+    if (!error && data && data.length > 0) {
+      const hasNumbers = data.some((item: any) => typeof item.position === 'number' && !isNaN(item.position));
+      if (hasNumbers) {
+        return (data as any[]).sort((a, b) => (a.position ?? 9999) - (b.position ?? 9999)) as Progetto[];
+      }
+      return (data as any[]).sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeA - timeB;
+      }) as Progetto[];
+    }
+
+    if (error) {
+      const msg = error.message || '';
+      // If table does not exist in schema cache, return null gracefully
+      if (msg.includes('Could not find the table') || msg.includes('does not exist') || msg.includes('schema cache')) {
+        return null;
+      }
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('fetch failed')) {
+        isSupabaseTemporarilyOffline = true;
+        return null;
+      }
+
+      const fallbackQuery = supabase
+        .from('progetti')
+        .select('*')
+        .order('created_at', { ascending: true });
+      const { data: fallbackData, error: fallbackError } = await withTimeout(Promise.resolve(fallbackQuery), 3000);
+      if (fallbackError) {
+        const simpleQuery = supabase.from('progetti').select('*');
+        const { data: simpleData } = await withTimeout(Promise.resolve(simpleQuery), 3000);
+        return simpleData as Progetto[];
+      }
+      return fallbackData as Progetto[];
+    }
+
+    return (data as Progetto[]) || null;
+  } catch (err: any) {
+    return null;
+  }
+}
+
+/**
+ * Save / sync progetti to Supabase
+ */
+export async function syncProgettiToSupabase(progetti: Progetto[]) {
+  if (!supabase || isSupabaseTemporarilyOffline) return;
+  try {
+    const baseTime = Date.now() - (progetti.length * 1000);
+    const payloadFull = progetti.map((p, idx) => ({
+      id: p.id,
+      title: p.title,
+      category: p.category || '',
+      description: p.description || '',
+      image: p.image || '',
+      gradientIndex: p.gradientIndex ?? (idx % 6),
+      tags: p.tags || [],
+      period: p.period || '',
+      client: p.client || '',
+      linkUrl: p.linkUrl || '',
+      linkText: p.linkText || '',
+      githubUrl: p.githubUrl || '',
+      position: idx,
+      isExample: p.isExample || false,
+      created_at: p.created_at || new Date(baseTime + idx * 1000).toISOString(),
+    }));
+
+    const upsertPromise = supabase
+      .from('progetti')
+      .upsert(payloadFull, { onConflict: 'id' });
+
+    const { error } = await withTimeout(Promise.resolve(upsertPromise), 4000);
+
+    if (error) {
+      const msg = error.message || '';
+      if (msg.includes('Could not find the table') || msg.includes('does not exist')) {
+        // Table doesn't exist in Supabase yet
+        return;
+      }
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('fetch failed')) {
+        isSupabaseTemporarilyOffline = true;
+        return;
+      }
+
+      // If position or optional column doesn't exist in remote schema
+      if (msg.includes('schema cache') || msg.includes('column') || msg.includes('42703')) {
+        const payloadStandard = progetti.map((p, idx) => ({
+          id: p.id,
+          title: p.title,
+          category: p.category || '',
+          description: p.description || '',
+          image: p.image || '',
+          gradientIndex: p.gradientIndex ?? (idx % 6),
+          tags: p.tags || [],
+          created_at: p.created_at || new Date(baseTime + idx * 1000).toISOString(),
+        }));
+
+        const fallbackPromise = supabase
+          .from('progetti')
+          .upsert(payloadStandard, { onConflict: 'id' });
+
+        await withTimeout(Promise.resolve(fallbackPromise), 3000);
+      }
+    }
+  } catch (err: any) {
+    // Non-blocking
+  }
+}
+
+/**
+ * Delete a progetto from Supabase
+ */
+export async function deleteProgettoFromSupabase(id: string) {
+  if (!supabase || isSupabaseTemporarilyOffline) return;
+  try {
+    const query = supabase.from('progetti').delete().eq('id', id);
+    await withTimeout(Promise.resolve(query), 3000);
+  } catch (err: any) {
+    // Non-blocking
   }
 }

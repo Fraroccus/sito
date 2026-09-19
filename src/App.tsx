@@ -18,10 +18,13 @@ import {
   isSupabaseConfigured,
   fetchPercorsiFromSupabase,
   fetchCollaborationsFromSupabase,
+  fetchProgettiFromSupabase,
   syncPercorsiToSupabase,
   syncCollaborationsToSupabase,
+  syncProgettiToSupabase,
   deletePercorsoFromSupabase,
-  deleteCollaborationFromSupabase
+  deleteCollaborationFromSupabase,
+  deleteProgettoFromSupabase
 } from './lib/supabase';
 import { ShieldCheck, LogOut, Code, Info, ArrowUp, Download, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -50,6 +53,21 @@ export default function App() {
     if (!Array.isArray(list)) return [];
     const mockIds = new Set(['collab-1', 'collab-2', 'collab-3', 'collab-4']);
     const nonMock = list.filter(c => !mockIds.has(c.id));
+    return nonMock.length > 0 ? nonMock : list;
+  };
+
+  // Helper to check and filter out sample/placeholder projects
+  const isExampleProgetto = (p: Progetto) => {
+    if (!p) return true;
+    if (p.isExample) return true;
+    if (p.id && (p.id.startsWith('progetto-esempio-') || p.id === 'progetto-1' || p.id === 'progetto-2' || p.id === 'progetto-3' || p.id === 'progetto-4' || p.id === 'progetto-5')) return true;
+    if (p.title && p.title.toLowerCase().includes('(esempio')) return true;
+    return false;
+  };
+
+  const filterRealProgetti = (list: Progetto[]): Progetto[] => {
+    if (!Array.isArray(list)) return [];
+    const nonMock = list.filter(p => !isExampleProgetto(p));
     return nonMock.length > 0 ? nonMock : list;
   };
 
@@ -94,13 +112,14 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
+          const filtered = filterRealProgetti(parsed);
+          if (filtered.length > 0) return filtered;
         }
       } catch (e) {
         console.error('Failed to parse progetti from localStorage', e);
       }
     }
-    return INITIAL_PROGETTI;
+    return filterRealProgetti(INITIAL_PROGETTI);
   });
 
   // Load and store video interview data in local state with fallback
@@ -152,12 +171,14 @@ export default function App() {
     const currentProgetti = updatedProgetti || progettiRef.current;
     const cleanPercorsi = filterRealPercorsi(updatedPercorsi);
     const cleanCollabs = filterRealCollaborations(updatedCollabs);
+    const cleanProgetti = filterRealProgetti(currentProgetti);
 
     // Sync with Supabase if configured
     if (isSupabaseConfigured) {
       try {
         await syncPercorsiToSupabase(cleanPercorsi);
         await syncCollaborationsToSupabase(cleanCollabs);
+        await syncProgettiToSupabase(cleanProgetti);
       } catch (sbErr) {
         console.warn('Avviso sincronizzazione Supabase:', sbErr);
       }
@@ -167,7 +188,7 @@ export default function App() {
     const payload = JSON.stringify({ 
       percorsi: cleanPercorsi, 
       collaborations: cleanCollabs,
-      progetti: currentProgetti,
+      progetti: cleanProgetti,
       videoInterview: currentVideo
     });
 
@@ -194,8 +215,8 @@ export default function App() {
   };
 
 const mergeProgetti = (serverP: Progetto[], localP: Progetto[]): Progetto[] => {
-  const cleanServerP = Array.isArray(serverP) ? serverP : [];
-  const cleanLocalP = Array.isArray(localP) ? localP : [];
+  const cleanServerP = filterRealProgetti(serverP || []);
+  const cleanLocalP = filterRealProgetti(localP || []);
 
   if (cleanServerP.length === 0) return cleanLocalP;
   if (cleanLocalP.length === 0) return cleanServerP;
@@ -224,7 +245,7 @@ const mergeProgetti = (serverP: Progetto[], localP: Progetto[]): Progetto[] => {
     }
   }
 
-  return result;
+  return filterRealProgetti(result);
 };
 
 // Helper to merge server and local cache data gracefully without losing images or custom ordering
@@ -316,7 +337,7 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
         try { localC = filterRealCollaborations(JSON.parse(savedCollabsRaw) || []); } catch(e) {}
       }
       if (savedProgettiRaw) {
-        try { localProj = JSON.parse(savedProgettiRaw) || []; } catch(e) {}
+        try { localProj = filterRealProgetti(JSON.parse(savedProgettiRaw) || []); } catch(e) {}
       }
 
       // 1. Try Supabase first if configured
@@ -331,11 +352,18 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
           deleteCollaborationFromSupabase('collab-2').catch(() => {});
           deleteCollaborationFromSupabase('collab-3').catch(() => {});
           deleteCollaborationFromSupabase('collab-4').catch(() => {});
+          deleteProgettoFromSupabase('progetto-1').catch(() => {});
+          deleteProgettoFromSupabase('progetto-2').catch(() => {});
+          deleteProgettoFromSupabase('progetto-3').catch(() => {});
+          deleteProgettoFromSupabase('progetto-4').catch(() => {});
+          deleteProgettoFromSupabase('progetto-5').catch(() => {});
 
           const supabasePercorsiRaw = await fetchPercorsiFromSupabase();
           const supabaseCollabsRaw = await fetchCollaborationsFromSupabase();
+          const supabaseProgettiRaw = await fetchProgettiFromSupabase();
           const supabasePercorsi = filterRealPercorsi(supabasePercorsiRaw || []);
           const supabaseCollabs = filterRealCollaborations(supabaseCollabsRaw || []);
+          const supabaseProgetti = filterRealProgetti(supabaseProgettiRaw || []);
 
           if (supabasePercorsi && supabasePercorsi.length > 0) {
             const mergedP = mergePercorsi(supabasePercorsi, localP);
@@ -365,9 +393,19 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
               } catch (e2) {}
             }
           }
-
-          if (loadedFromSupabase) {
-            return;
+          if (supabaseProgetti && supabaseProgetti.length > 0) {
+            const mergedProj = mergeProgetti(supabaseProgetti, localProj);
+            setProgetti(mergedProj);
+            progettiRef.current = mergedProj;
+            loadedFromSupabase = true;
+            try {
+              localStorage.setItem('francesco_rocco_progetti', JSON.stringify(mergedProj));
+            } catch (e) {
+              try {
+                const lightweightProj = mergedProj.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
+                localStorage.setItem('francesco_rocco_progetti', JSON.stringify(lightweightProj));
+              } catch (e2) {}
+            }
           }
         } catch (supabaseErr) {
           console.warn('Avviso recupero Supabase, continuazione con storage locale:', supabaseErr);
@@ -377,7 +415,8 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
       // 2. Try Express backend server (/api/data) - db.json is persistent and supports large base64 thumbnails
       try {
         const response = await fetch('/api/data');
-        if (response.ok) {
+        const contentType = response.headers.get('content-type') || '';
+        if (response.ok && contentType.includes('application/json')) {
           const data = await response.json();
           let loadedFromBackend = false;
 
@@ -586,6 +625,9 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
 
   const handleDeleteProgetto = (id: string) => {
     const updated = progetti.filter(item => item.id !== id);
+    if (isSupabaseConfigured) {
+      deleteProgettoFromSupabase(id);
+    }
     saveProgettiToStorage(updated);
   };
 

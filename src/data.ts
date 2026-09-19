@@ -545,74 +545,20 @@ export const DEFAULT_COLLABORATIONS: Collaboration[] = [
 
 export const INITIAL_PROGETTI: Progetto[] = [
   {
-    id: "progetto-1",
-    title: "Laboratori PNRR STEM & Intelligenza Artificiale per Scuole",
-    category: "Didattica & STEM",
-    description: "Percorsi laboratoriali intensivi incentrati sulla comprensione dei modelli generativi, etica computazionale, prompt engineering e creazione di contenuti didattici interattivi con gli studenti delle scuole secondarie.",
-    image: "",
-    gradientIndex: 0,
-    tags: ["Scuola", "PNRR D.M. 65", "Prompt Engineering", "Etica AI"],
-    period: "A.S. 2023 - 2024",
-    client: "Istituti Comprensivi e Superiori",
-    linkUrl: "https://www.istruzione.it/pnrr/",
-    isExample: true,
-    created_at: "2024-01-15T10:00:00.000Z"
-  },
-  {
-    id: "progetto-2",
-    title: "Automazione dei Flussi & IA Generativa per PMI",
-    category: "Aziende & Formazione",
-    description: "Consulenza e workshop pratici per professionisti e imprese: integrazione di Large Language Models nella gestione documentale, analisi dati e ottimizzazione della comunicazione aziendale.",
-    image: "",
-    gradientIndex: 1,
-    tags: ["PMI", "LLM", "Workflow Automation", "Produttività"],
-    period: "2024 - In corso",
-    client: "Aziende & Studi Professionali",
-    linkUrl: "",
-    isExample: true,
-    created_at: "2024-02-10T11:00:00.000Z"
-  },
-  {
-    id: "progetto-3",
-    title: "Robotica Educativa & Pensiero Computazionale",
-    category: "Robotica & Coding",
-    description: "Laboratori esperienziali con kit di robotica educativa (Lego Spike, micro:bit) e ambienti di coding a blocchi per sviluppare problem-solving, logica algoritmica e collaborazione sin dalla scuola primaria.",
-    image: "",
-    gradientIndex: 2,
-    tags: ["Lego Spike", "Coding", "Problem Solving", "Laboratorio"],
-    period: "2023 - 2024",
-    client: "Scuole dell'Emilia-Romagna",
-    linkUrl: "",
-    isExample: true,
-    created_at: "2024-03-01T09:30:00.000Z"
-  },
-  {
-    id: "progetto-4",
-    title: "Divulgazione Scientifica: 'IA e Senso Critico' sui Media",
-    category: "Divulgazione & Eventi",
-    description: "Ciclo di interventi radiofonici, interviste ed eventi pubblici su StoryTime e Radio Canale Italia dedicati a sfatare i falsi miti sull'IA, riconoscere deepfake e guidare all'uso consapevole delle tecnologie emergenti.",
-    image: "",
-    gradientIndex: 3,
-    tags: ["StoryTime", "Radio Canale Italia", "Deepfake", "Media Literacy"],
-    period: "2024",
-    client: "Media & Eventi Culturali",
-    linkUrl: "https://www.youtube.com/watch?v=yEveLtaHpHQ",
-    isExample: true,
-    created_at: "2024-04-12T14:00:00.000Z"
-  },
-  {
-    id: "progetto-5",
-    title: "Assistenti Virtuali su Misura per Segreterie Scolastiche (ATA)",
+    id: "progetto-1789831502978",
+    title: "NeuroMechFly Tris",
     category: "Intelligenza Artificiale",
-    description: "Sviluppo e configurazione di modelli custom di supporto alla segreteria scolastica per velocizzare la stesura di circolari, risposte a quesiti frequenti e archiviazione normativa.",
-    image: "",
-    gradientIndex: 4,
-    tags: ["Personale ATA", "Custom GPT", "Segreteria Digitale"],
-    period: "2024 - In corso",
-    client: "Istituzioni Scolastiche",
-    linkUrl: "",
-    isExample: true,
-    created_at: "2024-05-18T16:20:00.000Z"
+    description: "Una semplice interfaccia che permette di giocare a tris contro il connettoma di una Drosophila Melanogaster, visualizzando in tempo reale l'attivazione cerebrale per ciascuna decisione.",
+    image: "/neuromechfly.jpg",
+    gradientIndex: 1,
+    tags: ["Drosophila", "Reti Neurali", "Three.js", "Gamification"],
+    period: "2024",
+    client: "Progetto Personale & Ricerca",
+    linkUrl: "/neuromechfly-tris/",
+    linkText: "Vedi progetto",
+    githubUrl: "https://github.com/Fraroccus/moscatris",
+    isExample: false,
+    created_at: "2026-09-19T15:25:02.978Z"
   }
 ];
 
