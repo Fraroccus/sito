@@ -985,7 +985,7 @@ function makeRoomEnvironment(renderer){
         "C'era un'opzione leggermente preferita dalla sua valutazione, ma questa non era lontana"
       ]) + " (era al posto " + decision.rank + " su " + decision.nCandidates + "). La mosca non gioca mai in modo perfetto, e sceglie con una punta di casualita' anche fra le opzioni migliori.";
     } else if (frac > 0.25){
-      sentence = "Il suo cervello valutava altre mosse come migliori (questa era al posto " + decision.rank + " su " + decision.nCandidates + "), ma la scelta finale conserva sempre una componente casuale — puoi regolare quanto con il cursore qui sopra.";
+      sentence = "Il suo cervello valutava altre mosse come migliori (questa era al posto " + decision.rank + " su " + decision.nCandidates + "), ma la scelta finale conserva sempre una componente casuale — puoi regolare quanto con lo slider sotto la griglia.";
     } else {
       sentence = pickPhrase([
         "Il suo cervello giudicava questa fra le mosse meno promettenti disponibili ora (posto " + decision.rank + " su " + decision.nCandidates + "), ma la sua naturale imperfezione l'ha comunque portata a sceglierla",
