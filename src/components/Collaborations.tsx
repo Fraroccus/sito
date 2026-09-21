@@ -43,6 +43,7 @@ export default function Collaborations({
   const [isReorderModalOpen, setIsReorderModalOpen] = React.useState(false);
   const [partnerToEdit, setPartnerToEdit] = React.useState<Collaboration | null>(null);
   const [deletingCollabInfo, setDeletingCollabInfo] = React.useState<{ id: string; name: string } | null>(null);
+  const [failedImages, setFailedImages] = React.useState<Record<string, boolean>>({});
 
   const handleMovePartner = (fromIndex: number, toIndex: number) => {
     if (!onReorderCollabs) return;
@@ -309,12 +310,13 @@ export default function Collaborations({
                           >
                             {/* Centered Space for the Logo */}
                             <div className="w-16 h-16 flex items-center justify-center font-mono font-black text-slate-700 group-hover:text-indigo-600 group-hover/link:text-indigo-600 transition-colors overflow-hidden text-lg">
-                              {collab.logoUrl ? (
+                              {collab.logoUrl && !failedImages[collab.id] ? (
                                 <img 
                                   src={collab.logoUrl} 
                                   alt={collab.name} 
                                   className="w-full h-full object-contain p-1.5"
                                   referrerPolicy="no-referrer"
+                                  onError={() => setFailedImages(prev => ({ ...prev, [collab.id]: true }))}
                                 />
                               ) : (
                                 collab.logoText
@@ -334,12 +336,13 @@ export default function Collaborations({
                           <>
                             {/* Centered Space for the Logo */}
                             <div className="w-16 h-16 flex items-center justify-center font-mono font-black text-slate-700 group-hover:text-indigo-600 transition-colors overflow-hidden text-lg">
-                              {collab.logoUrl ? (
+                              {collab.logoUrl && !failedImages[collab.id] ? (
                                 <img 
                                   src={collab.logoUrl} 
                                   alt={collab.name} 
                                   className="w-full h-full object-contain p-1.5"
                                   referrerPolicy="no-referrer"
+                                  onError={() => setFailedImages(prev => ({ ...prev, [collab.id]: true }))}
                                 />
                               ) : (
                                 collab.logoText

@@ -26,6 +26,7 @@ import {
   deleteCollaborationFromSupabase,
   deleteProgettoFromSupabase
 } from './lib/supabase';
+import { idbGet, idbSet } from './lib/storage';
 import { ShieldCheck, LogOut, Code, Info, ArrowUp, Download, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -173,18 +174,7 @@ export default function App() {
     const cleanCollabs = filterRealCollaborations(updatedCollabs);
     const cleanProgetti = filterRealProgetti(currentProgetti);
 
-    // Sync with Supabase if configured
-    if (isSupabaseConfigured) {
-      try {
-        await syncPercorsiToSupabase(cleanPercorsi);
-        await syncCollaborationsToSupabase(cleanCollabs);
-        await syncProgettiToSupabase(cleanProgetti);
-      } catch (sbErr) {
-        console.warn('Avviso sincronizzazione Supabase:', sbErr);
-      }
-    }
-
-    // Sync with Express local server (/api/data) with retry and graceful fallback
+    // 1. Immediately sync with Express local server (/api/data) - fast, reliable, zero lag
     const payload = JSON.stringify({ 
       percorsi: cleanPercorsi, 
       collaborations: cleanCollabs,
@@ -212,136 +202,206 @@ export default function App() {
     };
 
     sendPayload();
+
+    // 2. In parallel, sync with Supabase in background if configured (never blocks local persistence)
+    if (isSupabaseConfigured) {
+      Promise.allSettled([
+        syncPercorsiToSupabase(cleanPercorsi),
+        syncCollaborationsToSupabase(cleanCollabs),
+        syncProgettiToSupabase(cleanProgetti)
+      ]).catch(() => {});
+    }
   };
 
-const mergeProgetti = (serverP: Progetto[], localP: Progetto[]): Progetto[] => {
-  const cleanServerP = filterRealProgetti(serverP || []);
-  const cleanLocalP = filterRealProgetti(localP || []);
+const mergeProgetti = (remoteP: Progetto[], localP: Progetto[]): Progetto[] => {
+  const cleanRemote = filterRealProgetti(remoteP || []);
+  const cleanLocal = filterRealProgetti(localP || []);
 
-  if (cleanServerP.length === 0) return cleanLocalP;
-  if (cleanLocalP.length === 0) return cleanServerP;
+  if (cleanRemote.length === 0) return cleanLocal;
+  if (cleanLocal.length === 0) return cleanRemote;
 
-  const serverMap = new Map<string, Progetto>(cleanServerP.map(p => [p.id, p]));
+  const remoteMap = new Map<string, Progetto>(cleanRemote.map(p => [p.id, p]));
   const result: Progetto[] = [];
   const processedIds = new Set<string>();
 
-  for (const lp of cleanLocalP) {
-    const sp = serverMap.get(lp.id);
-    if (sp) {
-      result.push({
-        ...sp,
-        image: sp.image || lp.image || '',
-        gradientIndex: sp.gradientIndex ?? lp.gradientIndex ?? 0
-      });
+  for (const lp of cleanLocal) {
+    const rp = remoteMap.get(lp.id);
+    if (rp) {
+      const localTime = lp.updated_at ? new Date(lp.updated_at).getTime() : 0;
+      const remoteTime = (rp.updated_at || rp.created_at) ? new Date(rp.updated_at || rp.created_at!).getTime() : 0;
+
+      if (localTime > remoteTime) {
+        // Local edit is newer: local tags and details take precedence
+        result.push({
+          ...rp,
+          ...lp,
+          tags: Array.isArray(lp.tags) ? lp.tags : (rp.tags || []),
+          image: lp.image || rp.image || '',
+          gradientIndex: lp.gradientIndex ?? rp.gradientIndex ?? 0
+        });
+      } else {
+        // Remote is newer or equal: preserve local tags/links if remote schema dropped them
+        result.push({
+          ...rp,
+          tags: (Array.isArray(rp.tags) && rp.tags.length > 0) ? rp.tags : (lp.tags || []),
+          image: rp.image || lp.image || '',
+          gradientIndex: rp.gradientIndex ?? lp.gradientIndex ?? 0,
+          linkUrl: rp.linkUrl || lp.linkUrl,
+          linkText: rp.linkText || lp.linkText,
+          githubUrl: rp.githubUrl || lp.githubUrl
+        });
+      }
     } else {
       result.push(lp);
     }
     processedIds.add(lp.id);
   }
 
-  for (const sp of cleanServerP) {
-    if (!processedIds.has(sp.id)) {
-      result.push(sp);
+  for (const rp of cleanRemote) {
+    if (!processedIds.has(rp.id)) {
+      result.push(rp);
     }
   }
 
   return filterRealProgetti(result);
 };
 
-// Helper to merge server and local cache data gracefully without losing images or custom ordering
-const mergePercorsi = (serverP: Percorso[], localP: Percorso[]): Percorso[] => {
-  const cleanServerP = filterRealPercorsi(serverP || []);
-  const cleanLocalP = filterRealPercorsi(localP || []);
+// Helper to merge server and local cache data gracefully without losing images, tags, or custom ordering
+const mergePercorsi = (remoteP: Percorso[], localP: Percorso[]): Percorso[] => {
+  const cleanRemote = filterRealPercorsi(remoteP || []);
+  const cleanLocal = filterRealPercorsi(localP || []);
 
-  if (cleanServerP.length === 0) return cleanLocalP;
-  if (cleanLocalP.length === 0) return cleanServerP;
+  if (cleanRemote.length === 0) return cleanLocal;
+  if (cleanLocal.length === 0) return cleanRemote;
 
-  const serverMap = new Map<string, Percorso>(cleanServerP.map(p => [p.id, p]));
+  const remoteMap = new Map<string, Percorso>(cleanRemote.map(p => [p.id, p]));
   const result: Percorso[] = [];
   const processedIds = new Set<string>();
 
-  // 1. Iterate localP first to preserve user's custom sequence order from localStorage
-  for (const lp of cleanLocalP) {
-    const sp = serverMap.get(lp.id);
-    if (sp) {
-      result.push({
-        ...sp,
-        image: sp.image || lp.image || '',
-        gradientIndex: sp.gradientIndex ?? lp.gradientIndex ?? 0
-      });
+  for (const lp of cleanLocal) {
+    const rp = remoteMap.get(lp.id);
+    if (rp) {
+      const localTime = lp.updated_at ? new Date(lp.updated_at).getTime() : 0;
+      const remoteTime = (rp.updated_at || rp.created_at) ? new Date(rp.updated_at || rp.created_at!).getTime() : 0;
+
+      if (localTime > remoteTime) {
+        result.push({
+          ...rp,
+          ...lp,
+          image: lp.image || rp.image || '',
+          gradientIndex: lp.gradientIndex ?? rp.gradientIndex ?? 0
+        });
+      } else {
+        result.push({
+          ...rp,
+          image: rp.image || lp.image || '',
+          gradientIndex: rp.gradientIndex ?? lp.gradientIndex ?? 0,
+          requiresKit: rp.requiresKit ?? lp.requiresKit
+        });
+      }
     } else {
       result.push(lp);
     }
     processedIds.add(lp.id);
   }
 
-  // 2. Append any new server percorsi created elsewhere
-  for (const sp of cleanServerP) {
-    if (!processedIds.has(sp.id)) {
-      result.push(sp);
+  for (const rp of cleanRemote) {
+    if (!processedIds.has(rp.id)) {
+      result.push(rp);
     }
   }
 
   return filterRealPercorsi(result);
 };
 
-const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]): Collaboration[] => {
-  const cleanServerC = filterRealCollaborations(serverC || []);
-  const cleanLocalC = filterRealCollaborations(localC || []);
+const mergeCollaborations = (remoteC: Collaboration[], localC: Collaboration[]): Collaboration[] => {
+  const cleanRemote = filterRealCollaborations(remoteC || []);
+  const cleanLocal = filterRealCollaborations(localC || []);
 
-  if (cleanServerC.length === 0) return cleanLocalC;
-  if (cleanLocalC.length === 0) return cleanServerC;
+  if (cleanRemote.length === 0) return cleanLocal;
+  if (cleanLocal.length === 0) return cleanRemote;
 
-  const serverMap = new Map<string, Collaboration>(cleanServerC.map(c => [c.id, c]));
+  const remoteMap = new Map<string, Collaboration>(cleanRemote.map(c => [c.id, c]));
   const result: Collaboration[] = [];
   const processedIds = new Set<string>();
 
-  // 1. Iterate localC first to preserve user's custom sequence order from localStorage
-  for (const lc of cleanLocalC) {
-    const sc = serverMap.get(lc.id);
-    if (sc) {
-      result.push({
-        ...sc,
-        logoUrl: sc.logoUrl || lc.logoUrl || ''
-      });
+  for (const lc of cleanLocal) {
+    const rc = remoteMap.get(lc.id);
+    if (rc) {
+      const localTime = lc.updated_at ? new Date(lc.updated_at).getTime() : 0;
+      const remoteTime = (rc.updated_at || rc.created_at) ? new Date(rc.updated_at || rc.created_at!).getTime() : 0;
+
+      if (localTime > remoteTime) {
+        result.push({
+          ...rc,
+          ...lc,
+          logoUrl: lc.logoUrl || rc.logoUrl || ''
+        });
+      } else {
+        result.push({
+          ...rc,
+          logoUrl: rc.logoUrl || lc.logoUrl || '',
+          websiteUrl: rc.websiteUrl || lc.websiteUrl
+        });
+      }
     } else {
       result.push(lc);
     }
     processedIds.add(lc.id);
   }
 
-  // 2. Append any new server collaborations created elsewhere
-  for (const sc of cleanServerC) {
-    if (!processedIds.has(sc.id)) {
-      result.push(sc);
+  for (const rc of cleanRemote) {
+    if (!processedIds.has(rc.id)) {
+      result.push(rc);
     }
   }
 
   return filterRealCollaborations(result);
 };
 
-  // Fetch initial data on mount (checks Supabase or Express API first)
+  // Fetch initial data on mount (combines IndexedDB, localStorage, Supabase, and Express API in resilient 3-way merge)
   useEffect(() => {
     const fetchInitialData = async () => {
-      // Read local cache first for smart merge
-      const savedPercorsiRaw = localStorage.getItem('francesco_rocco_percorsi');
-      const savedCollabsRaw = localStorage.getItem('francesco_rocco_collaborations');
-      const savedProgettiRaw = localStorage.getItem('francesco_rocco_progetti');
+      // 1. Read local cache (IndexedDB first, fallback to localStorage)
       let localP: Percorso[] = [];
       let localC: Collaboration[] = [];
       let localProj: Progetto[] = [];
-      if (savedPercorsiRaw) {
-        try { localP = filterRealPercorsi(JSON.parse(savedPercorsiRaw) || []); } catch(e) {}
+
+      try {
+        const idbP = await idbGet<Percorso[]>('francesco_rocco_percorsi');
+        if (Array.isArray(idbP) && idbP.length > 0) localP = filterRealPercorsi(idbP);
+        const idbC = await idbGet<Collaboration[]>('francesco_rocco_collaborations');
+        if (Array.isArray(idbC) && idbC.length > 0) localC = filterRealCollaborations(idbC);
+        const idbProj = await idbGet<Progetto[]>('francesco_rocco_progetti');
+        if (Array.isArray(idbProj) && idbProj.length > 0) localProj = filterRealProgetti(idbProj);
+      } catch (e) {}
+
+      if (localP.length === 0) {
+        const savedPercorsiRaw = localStorage.getItem('francesco_rocco_percorsi');
+        if (savedPercorsiRaw) {
+          try { localP = filterRealPercorsi(JSON.parse(savedPercorsiRaw) || []); } catch(e) {}
+        }
       }
-      if (savedCollabsRaw) {
-        try { localC = filterRealCollaborations(JSON.parse(savedCollabsRaw) || []); } catch(e) {}
+      if (localC.length === 0) {
+        const savedCollabsRaw = localStorage.getItem('francesco_rocco_collaborations');
+        if (savedCollabsRaw) {
+          try { localC = filterRealCollaborations(JSON.parse(savedCollabsRaw) || []); } catch(e) {}
+        }
       }
-      if (savedProgettiRaw) {
-        try { localProj = filterRealProgetti(JSON.parse(savedProgettiRaw) || []); } catch(e) {}
+      if (localProj.length === 0) {
+        const savedProgettiRaw = localStorage.getItem('francesco_rocco_progetti');
+        if (savedProgettiRaw) {
+          try { localProj = filterRealProgetti(JSON.parse(savedProgettiRaw) || []); } catch(e) {}
+        }
       }
 
-      // 1. Try Supabase first if configured
-      let loadedFromSupabase = false;
+      // Working sets initialized from local storage
+      let currentP = localP.length > 0 ? localP : percorsiRef.current;
+      let currentC = localC.length > 0 ? localC : collaborationsRef.current;
+      let currentProj = localProj.length > 0 ? localProj : progettiRef.current;
+      let currentVideo = videoInterviewRef.current;
+
+      // 2. Fetch from Supabase if configured
       if (isSupabaseConfigured) {
         try {
           // Asynchronously purge obsolete sample entries from remote database if present
@@ -358,165 +418,80 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
           deleteProgettoFromSupabase('progetto-4').catch(() => {});
           deleteProgettoFromSupabase('progetto-5').catch(() => {});
 
-          const supabasePercorsiRaw = await fetchPercorsiFromSupabase();
-          const supabaseCollabsRaw = await fetchCollaborationsFromSupabase();
-          const supabaseProgettiRaw = await fetchProgettiFromSupabase();
+          const [supabasePercorsiRaw, supabaseCollabsRaw, supabaseProgettiRaw] = await Promise.all([
+            fetchPercorsiFromSupabase(),
+            fetchCollaborationsFromSupabase(),
+            fetchProgettiFromSupabase()
+          ]);
+
           const supabasePercorsi = filterRealPercorsi(supabasePercorsiRaw || []);
           const supabaseCollabs = filterRealCollaborations(supabaseCollabsRaw || []);
           const supabaseProgetti = filterRealProgetti(supabaseProgettiRaw || []);
 
-          if (supabasePercorsi && supabasePercorsi.length > 0) {
-            const mergedP = mergePercorsi(supabasePercorsi, localP);
-            setPercorsi(mergedP);
-            percorsiRef.current = mergedP;
-            loadedFromSupabase = true;
-            try {
-              localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(mergedP));
-            } catch (e) {
-              try {
-                const lightweightP = mergedP.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
-                localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(lightweightP));
-              } catch (e2) {}
-            }
+          if (supabasePercorsi.length > 0) {
+            currentP = mergePercorsi(supabasePercorsi, currentP);
           }
-          if (supabaseCollabs && supabaseCollabs.length > 0) {
-            const mergedC = mergeCollaborations(supabaseCollabs, localC);
-            setCollaborations(mergedC);
-            collaborationsRef.current = mergedC;
-            loadedFromSupabase = true;
-            try {
-              localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(mergedC));
-            } catch (e) {
-              try {
-                const lightweightC = mergedC.map(c => ({ ...c, logoUrl: c.logoUrl && c.logoUrl.length > 2000 ? '' : c.logoUrl }));
-                localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(lightweightC));
-              } catch (e2) {}
-            }
+          if (supabaseCollabs.length > 0) {
+            currentC = mergeCollaborations(supabaseCollabs, currentC);
           }
-          if (supabaseProgetti && supabaseProgetti.length > 0) {
-            const mergedProj = mergeProgetti(supabaseProgetti, localProj);
-            setProgetti(mergedProj);
-            progettiRef.current = mergedProj;
-            loadedFromSupabase = true;
-            try {
-              localStorage.setItem('francesco_rocco_progetti', JSON.stringify(mergedProj));
-            } catch (e) {
-              try {
-                const lightweightProj = mergedProj.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
-                localStorage.setItem('francesco_rocco_progetti', JSON.stringify(lightweightProj));
-              } catch (e2) {}
-            }
+          if (supabaseProgetti.length > 0) {
+            currentProj = mergeProgetti(supabaseProgetti, currentProj);
           }
         } catch (supabaseErr) {
-          console.warn('Avviso recupero Supabase, continuazione con storage locale:', supabaseErr);
+          console.warn('Avviso recupero Supabase:', supabaseErr);
         }
       }
 
-      // 2. Try Express backend server (/api/data) - db.json is persistent and supports large base64 thumbnails
+      // 3. Fetch from Express backend server (/api/data) - db.json
       try {
         const response = await fetch('/api/data');
         const contentType = response.headers.get('content-type') || '';
         if (response.ok && contentType.includes('application/json')) {
           const data = await response.json();
-          let loadedFromBackend = false;
-
-          const serverP = data.percorsi || [];
-          const serverC = data.collaborations || [];
-          const serverProj = data.progetti || [];
-
-          if (serverP.length > 0 || localP.length > 0) {
-            const mergedP = mergePercorsi(serverP, localP);
-            setPercorsi(mergedP);
-            percorsiRef.current = mergedP;
-            loadedFromBackend = true;
-            try {
-              localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(mergedP));
-            } catch (e) {
-              try {
-                const lightweightP = mergedP.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
-                localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(lightweightP));
-              } catch (e2) {}
-            }
+          if (Array.isArray(data.percorsi) && data.percorsi.length > 0) {
+            currentP = mergePercorsi(data.percorsi, currentP);
           }
-          if (serverC.length > 0 || localC.length > 0) {
-            const mergedC = mergeCollaborations(serverC, localC);
-            setCollaborations(mergedC);
-            collaborationsRef.current = mergedC;
-            loadedFromBackend = true;
-            try {
-              localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(mergedC));
-            } catch (e) {
-              try {
-                const lightweightC = mergedC.map(c => ({ ...c, logoUrl: c.logoUrl && c.logoUrl.length > 2000 ? '' : c.logoUrl }));
-                localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(lightweightC));
-              } catch (e2) {}
-            }
+          if (Array.isArray(data.collaborations) && data.collaborations.length > 0) {
+            currentC = mergeCollaborations(data.collaborations, currentC);
           }
-
-          if (serverProj.length > 0 || localProj.length > 0) {
-            const mergedProj = mergeProgetti(serverProj, localProj);
-            setProgetti(mergedProj);
-            progettiRef.current = mergedProj;
-            loadedFromBackend = true;
-            try {
-              localStorage.setItem('francesco_rocco_progetti', JSON.stringify(mergedProj));
-            } catch (e) {
-              try {
-                const lightweightProj = mergedProj.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
-                localStorage.setItem('francesco_rocco_progetti', JSON.stringify(lightweightProj));
-              } catch (e2) {}
-            }
+          if (Array.isArray(data.progetti) && data.progetti.length > 0) {
+            currentProj = mergeProgetti(data.progetti, currentProj);
           }
-
           if (data.videoInterview && typeof data.videoInterview === 'object') {
-            const serverVideo = normalizeVideoData(data.videoInterview);
-            setVideoInterview(serverVideo);
-            videoInterviewRef.current = serverVideo;
-            try {
-              localStorage.setItem('francesco_rocco_video_interview', JSON.stringify(serverVideo));
-            } catch (e) {}
-          }
-
-          if (loadedFromBackend) {
-            // Only push back if local storage had additional entries not present on server
-            const hasNewLocalP = localP.some(lp => !serverP.some((sp: Percorso) => sp.id === lp.id));
-            const hasNewLocalC = localC.some(lc => !serverC.some((sc: Collaboration) => sc.id === lc.id));
-            const hasNewLocalProj = localProj.some(lproj => !serverProj.some((sproj: Progetto) => sproj.id === lproj.id));
-            if (hasNewLocalP || hasNewLocalC || hasNewLocalProj) {
-              syncData(percorsiRef.current, collaborationsRef.current, videoInterviewRef.current, progettiRef.current);
-            }
-            return;
+            currentVideo = normalizeVideoData(data.videoInterview);
           }
         }
       } catch (err) {
-        console.warn('Avviso recupero backend iniziale, operatività con dati locali:', err);
+        console.warn('Avviso recupero backend /api/data:', err);
       }
 
-      // 3. Fallback to local cache or bundled initial data if backend/supabase returned no data
-      if (localP.length > 0) {
-        setPercorsi(localP);
-        percorsiRef.current = localP;
-      } else {
-        setPercorsi(INITIAL_PERCORSI);
-        percorsiRef.current = INITIAL_PERCORSI;
+      // 4. Update React state with fully consolidated data
+      setPercorsi(currentP);
+      percorsiRef.current = currentP;
+      setCollaborations(currentC);
+      collaborationsRef.current = currentC;
+      setProgetti(currentProj);
+      progettiRef.current = currentProj;
+      setVideoInterview(currentVideo);
+      videoInterviewRef.current = currentVideo;
+
+      // 5. Persist consolidated state into local stores
+      idbSet('francesco_rocco_percorsi', currentP).catch(() => {});
+      idbSet('francesco_rocco_collaborations', currentC).catch(() => {});
+      idbSet('francesco_rocco_progetti', currentProj).catch(() => {});
+      try {
+        localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(currentP));
+        localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(currentC));
+        localStorage.setItem('francesco_rocco_progetti', JSON.stringify(currentProj));
+        localStorage.setItem('francesco_rocco_video_interview', JSON.stringify(currentVideo));
+      } catch (e) {
+        console.warn('LocalStorage pieno, dati salvati in IndexedDB:', e);
       }
 
-      if (localC.length > 0) {
-        setCollaborations(localC);
-        collaborationsRef.current = localC;
-      } else {
-        setCollaborations(DEFAULT_COLLABORATIONS);
-        collaborationsRef.current = DEFAULT_COLLABORATIONS;
-      }
-
-      if (localProj.length > 0) {
-        setProgetti(localProj);
-        progettiRef.current = localProj;
-      } else {
-        setProgetti(INITIAL_PROGETTI);
-        progettiRef.current = INITIAL_PROGETTI;
-      }
+      // Background sync back to Express server to keep db.json up-to-date
+      syncData(currentP, currentC, currentVideo, currentProj);
     };
+
     fetchInitialData();
   }, []);
 
@@ -529,29 +504,34 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Save changes to localStorage and databases
+  // Save changes to localStorage, IndexedDB, Express, and Supabase
   const saveToStorage = (updatedPercorsi: Percorso[]) => {
     percorsiRef.current = updatedPercorsi;
     setPercorsi(updatedPercorsi);
+    idbSet('francesco_rocco_percorsi', updatedPercorsi).catch(() => {});
     try {
       localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(updatedPercorsi));
     } catch (e) {
-      console.warn('Impossibile salvare in localStorage (quota superata):', e);
-      try {
-        const lightweightP = updatedPercorsi.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
-        localStorage.setItem('francesco_rocco_percorsi', JSON.stringify(lightweightP));
-      } catch (e2) {}
+      console.warn('LocalStorage pieno, dati salvati in IndexedDB e server:', e);
     }
     syncData(updatedPercorsi, collaborationsRef.current);
   };
 
   const handleAddCourse = (newCourse: Percorso) => {
-    const updated = [newCourse, ...percorsi];
+    const courseWithTimestamp: Percorso = {
+      ...newCourse,
+      updated_at: new Date().toISOString()
+    };
+    const updated = [courseWithTimestamp, ...percorsi];
     saveToStorage(updated);
   };
 
   const handleUpdateCourse = (updatedCourse: Percorso) => {
-    const updated = percorsi.map(item => item.id === updatedCourse.id ? updatedCourse : item);
+    const updated = percorsi.map(item => 
+      item.id === updatedCourse.id 
+        ? { ...item, ...updatedCourse, updated_at: new Date().toISOString() } 
+        : item
+    );
     saveToStorage(updated);
   };
 
@@ -567,25 +547,30 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
   const saveCollabsToStorage = (updatedCollabs: Collaboration[]) => {
     collaborationsRef.current = updatedCollabs;
     setCollaborations(updatedCollabs);
+    idbSet('francesco_rocco_collaborations', updatedCollabs).catch(() => {});
     try {
       localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(updatedCollabs));
     } catch (e) {
-      console.warn('Impossibile salvare le collaborazioni in localStorage (quota superata):', e);
-      try {
-        const lightweightC = updatedCollabs.map(c => ({ ...c, logoUrl: c.logoUrl && c.logoUrl.length > 2000 ? '' : c.logoUrl }));
-        localStorage.setItem('francesco_rocco_collaborations', JSON.stringify(lightweightC));
-      } catch (e2) {}
+      console.warn('LocalStorage pieno, dati salvati in IndexedDB e server:', e);
     }
     syncData(percorsiRef.current, updatedCollabs);
   };
 
   const handleAddCollab = (newCollab: Collaboration) => {
-    const updated = [...collaborations, newCollab];
+    const collabWithTimestamp: Collaboration = {
+      ...newCollab,
+      updated_at: new Date().toISOString()
+    };
+    const updated = [...collaborations, collabWithTimestamp];
     saveCollabsToStorage(updated);
   };
 
   const handleUpdateCollab = (updatedCollab: Collaboration) => {
-    const updated = collaborations.map(item => item.id === updatedCollab.id ? updatedCollab : item);
+    const updated = collaborations.map(item => 
+      item.id === updatedCollab.id 
+        ? { ...item, ...updatedCollab, updated_at: new Date().toISOString() } 
+        : item
+    );
     saveCollabsToStorage(updated);
   };
 
@@ -601,25 +586,30 @@ const mergeCollaborations = (serverC: Collaboration[], localC: Collaboration[]):
   const saveProgettiToStorage = (updatedProgetti: Progetto[]) => {
     progettiRef.current = updatedProgetti;
     setProgetti(updatedProgetti);
+    idbSet('francesco_rocco_progetti', updatedProgetti).catch(() => {});
     try {
       localStorage.setItem('francesco_rocco_progetti', JSON.stringify(updatedProgetti));
     } catch (e) {
-      console.warn('Impossibile salvare i progetti in localStorage (quota superata):', e);
-      try {
-        const lightweightProj = updatedProgetti.map(p => ({ ...p, image: p.image && p.image.length > 2000 ? '' : p.image }));
-        localStorage.setItem('francesco_rocco_progetti', JSON.stringify(lightweightProj));
-      } catch (e2) {}
+      console.warn('LocalStorage pieno, dati salvati in IndexedDB e server:', e);
     }
     syncData(percorsiRef.current, collaborationsRef.current, videoInterviewRef.current, updatedProgetti);
   };
 
   const handleAddProgetto = (newProgetto: Progetto) => {
-    const updated = [newProgetto, ...progetti];
+    const projectWithTimestamp: Progetto = {
+      ...newProgetto,
+      updated_at: new Date().toISOString()
+    };
+    const updated = [projectWithTimestamp, ...progetti];
     saveProgettiToStorage(updated);
   };
 
   const handleUpdateProgetto = (updatedProgetto: Progetto) => {
-    const updated = progetti.map(item => item.id === updatedProgetto.id ? updatedProgetto : item);
+    const updated = progetti.map(item => 
+      item.id === updatedProgetto.id 
+        ? { ...item, ...updatedProgetto, updated_at: new Date().toISOString() } 
+        : item
+    );
     saveProgettiToStorage(updated);
   };
 

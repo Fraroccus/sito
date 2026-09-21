@@ -153,6 +153,18 @@ export default function ProgettoModal({ isOpen, onClose, onSave, onDelete, proge
           setImageUrl(e.target?.result as string);
           setCoverType('upload');
         }
+
+        // Upload to server endpoint for permanent lightweight path
+        const formData = new FormData();
+        formData.append('image', file);
+        fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        }).then(res => res.json()).then(data => {
+          if (data.imageUrl) {
+            setImageUrl(data.imageUrl);
+          }
+        }).catch(() => {});
       };
       img.src = e.target?.result as string;
     };
@@ -205,9 +217,10 @@ export default function ProgettoModal({ isOpen, onClose, onSave, onDelete, proge
       linkUrl: linkUrl.trim() || undefined,
       linkText: linkText.trim() || undefined,
       githubUrl: githubUrl.trim() || undefined,
-      tags: tags.length > 0 ? tags : undefined,
+      tags: tags,
       isExample: progettoToEdit ? progettoToEdit.isExample : false,
-      created_at: progettoToEdit?.created_at || new Date().toISOString()
+      created_at: progettoToEdit?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     onSave(savedProgetto);

@@ -22,12 +22,14 @@ export default function PartnerModal({ isOpen, onClose, onSave, onDelete, partne
   const [logoUrl, setLogoUrl] = useState('');
   const [websiteUrl, setWebsiteUrl] = useState('');
   const [uploadError, setUploadError] = useState('');
+  const [isProcessingLogo, setIsProcessingLogo] = useState(false);
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Reset/populate form when modal opens or edit partner changes
   useEffect(() => {
     setIsConfirmingDelete(false);
+    setIsProcessingLogo(false);
     if (partnerToEdit) {
       setName(partnerToEdit.name);
       setRole(partnerToEdit.role);
@@ -53,26 +55,35 @@ export default function PartnerModal({ isOpen, onClose, onSave, onDelete, partne
       setUploadError("Per favore carica solo file d'immagine (PNG, JPG, SVG, WebP).");
       return;
     }
-    if (file.size > 8 * 1024 * 1024) {
-      setUploadError("L'immagine è troppo pesante. Usa un logo di dimensioni inferiori a 8 MB.");
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError("L'immagine è troppo pesante. Usa un logo di dimensioni inferiori a 10 MB.");
       return;
     }
+
+    setIsProcessingLogo(true);
 
     // Direct read for SVG
     if (file.type === 'image/svg+xml') {
       const reader = new FileReader();
-      reader.onloadend = () => setLogoUrl(reader.result as string);
+      reader.onloadend = () => {
+        setLogoUrl(reader.result as string);
+        setIsProcessingLogo(false);
+      };
+      reader.onerror = () => {
+        setUploadError("Errore durante la lettura del file SVG.");
+        setIsProcessingLogo(false);
+      };
       reader.readAsDataURL(file);
       return;
     }
 
-    // Compress logo to max 400x400 PNG/JPEG
+    // Compress logo to crisp 200x200 px PNG (preserves transparency while keeping payload under ~15KB)
     const reader = new FileReader();
     reader.onload = (e) => {
       const img = new Image();
       img.onload = () => {
-        const maxWidth = 400;
-        const maxHeight = 400;
+        const maxWidth = 200;
+        const maxHeight = 200;
         let width = img.width;
         let height = img.height;
 
@@ -87,19 +98,41 @@ export default function PartnerModal({ isOpen, onClose, onSave, onDelete, partne
         }
 
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = Math.max(1, width);
+        canvas.height = Math.max(1, height);
         const ctx = canvas.getContext('2d');
         if (ctx) {
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.drawImage(img, 0, 0, width, height);
           const compressed = canvas.toDataURL('image/png');
           setLogoUrl(compressed);
         } else {
           setLogoUrl(e.target?.result as string);
         }
+        setIsProcessingLogo(false);
+
+        // Upload in background to server endpoint for permanent lightweight path
+        const formData = new FormData();
+        formData.append('image', file);
+        fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        }).then(res => res.json()).then(data => {
+          if (data.imageUrl) {
+            setLogoUrl(data.imageUrl);
+          }
+        }).catch(() => {});
       };
-      img.onerror = () => setLogoUrl(e.target?.result as string);
+      img.onerror = () => {
+        setLogoUrl(e.target?.result as string);
+        setIsProcessingLogo(false);
+      };
       img.src = e.target?.result as string;
+    };
+    reader.onerror = () => {
+      setUploadError("Errore durante la lettura del file.");
+      setIsProcessingLogo(false);
     };
     reader.readAsDataURL(file);
   };
@@ -125,6 +158,7 @@ export default function PartnerModal({ isOpen, onClose, onSave, onDelete, partne
 
   const handleSubmit = (e?: React.FormEvent | React.MouseEvent) => {
     if (e) e.preventDefault();
+    if (isProcessingLogo) return;
     if (!name.trim() || !role.trim()) {
       return;
     }
@@ -138,7 +172,9 @@ export default function PartnerModal({ isOpen, onClose, onSave, onDelete, partne
       role: role.trim(),
       logoText: finalLogoText.toUpperCase(),
       logoUrl: logoUrl.trim() || undefined,
-      websiteUrl: websiteUrl.trim() || undefined
+      websiteUrl: websiteUrl.trim() || undefined,
+      created_at: partnerToEdit?.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString()
     };
 
     onSave(savedPartner);
@@ -362,10 +398,13 @@ export default function PartnerModal({ isOpen, onClose, onSave, onDelete, partne
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={!name.trim() || !role.trim()}
-              className="px-5 py-2 bg-slate-900 hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-slate-900 text-white font-sans font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer uppercase tracking-wider"
+              disabled={!name.trim() || !role.trim() || isProcessingLogo}
+              className="px-5 py-2 bg-slate-900 hover:bg-indigo-600 disabled:opacity-50 disabled:hover:bg-slate-900 text-white font-sans font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer uppercase tracking-wider flex items-center gap-2"
             >
-              Salva Partner
+              {isProcessingLogo && (
+                <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              )}
+              <span>{isProcessingLogo ? 'Elaborazione logo...' : 'Salva Partner'}</span>
             </button>
           </div>
         </div>

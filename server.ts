@@ -36,6 +36,23 @@ async function startServer() {
     limits: { fileSize: 1024 * 1024 * 1024 } // Support up to 1GB video upload
   });
 
+  // Multer storage setup for image uploads (logos, project covers)
+  const imageStorage = multer.diskStorage({
+    destination: (_req, _file, cb) => {
+      cb(null, uploadsDir);
+    },
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname) || '.png';
+      const cleanName = `img_${Date.now()}_${Math.random().toString(36).substring(2, 7)}${ext}`;
+      cb(null, cleanName);
+    }
+  });
+
+  const uploadImage = multer({
+    storage: imageStorage,
+    limits: { fileSize: 20 * 1024 * 1024 } // Support up to 20MB images
+  });
+
   // Support large payloads (up to 50MB) to allow multiple high-resolution base64 images
   app.use(express.json({ limit: '50mb' }));
   app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -173,6 +190,27 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error("Errore durante il caricamento del video", err);
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // API Route - Direct Image Upload (Logos, Project covers)
+  app.post("/api/upload-image", uploadImage.single('image'), (req, res) => {
+    try {
+      if (!req.file) {
+        res.status(400).json({ success: false, error: "Nessun file immagine inviato" });
+        return;
+      }
+      const imageUrl = `/uploads/${req.file.filename}`;
+      res.json({
+        success: true,
+        imageUrl,
+        filename: req.file.filename,
+        originalName: req.file.originalname,
+        size: req.file.size
+      });
+    } catch (err: any) {
+      console.error("Errore durante il caricamento dell'immagine", err);
       res.status(500).json({ success: false, error: err.message });
     }
   });

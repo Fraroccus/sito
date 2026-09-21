@@ -17,6 +17,7 @@ export interface Percorso {
   requiresKit?: boolean; // Notice: "La scuola deve già essere in possesso del kit"
   isExample?: boolean; // To label the initial example
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface Collaboration {
@@ -27,6 +28,7 @@ export interface Collaboration {
   logoUrl?: string; // Optional URL for partner logo image
   websiteUrl?: string; // Optional URL to the partner's official website
   created_at?: string;
+  updated_at?: string;
 }
 
 export interface ContactFormData {
@@ -70,5 +72,6 @@ export interface Progetto {
   client?: string; // Optional partner, school or client
   isExample?: boolean;
   created_at?: string;
+  updated_at?: string;
 }
 
