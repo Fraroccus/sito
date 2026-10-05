@@ -204,7 +204,7 @@ export default function Progetti({
               Portfolio & Esperienze
             </span>
             <h2 className="font-sans font-black text-3xl sm:text-4xl text-slate-900 tracking-tight" id="progetti-heading">
-              I Miei Progetti
+              Progetti Speciali
             </h2>
             <p className="font-sans text-slate-600 text-sm sm:text-base leading-relaxed">
               Attività formative speciali sul campo, interventi di divulgazione scientifica e progetti di integrazione dell'Intelligenza Artificiale applicata a diversi campi.
