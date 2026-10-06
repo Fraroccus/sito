@@ -1,5 +1,20 @@
 {
   "version": 2,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "all, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/data",
