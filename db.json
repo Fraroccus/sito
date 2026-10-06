@@ -498,16 +498,6 @@
       "created_at": "2026-09-19T15:25:06.426+00:00"
     },
     {
-      "id": "collab-1789849577244",
-      "name": "LABORATORIO DELLE IDEE",
-      "role": "Formazione docenti",
-      "logoText": "LAB",
-      "logoUrl": "/uploads/labidee_logo.png",
-      "websiteUrl": "https://www.labidee.com/it",
-      "created_at": "2026-09-21T09:49:52.585+00:00",
-      "updated_at": "2026-09-21T10:03:36.939Z"
-    },
-    {
       "id": "collab-1789849638388",
       "name": "SCUOLA PESCARINI",
       "role": "Alta formazione",
@@ -515,6 +505,16 @@
       "logoUrl": "/uploads/pescarini_logo.png",
       "websiteUrl": "https://www.scuolapescarini.it/",
       "created_at": "2026-09-21T09:49:53.585+00:00",
+      "updated_at": "2026-09-21T10:03:36.939Z"
+    },
+    {
+      "id": "collab-1789849577244",
+      "name": "LABORATORIO DELLE IDEE",
+      "role": "Formazione docenti",
+      "logoText": "LAB",
+      "logoUrl": "/uploads/labidee_logo.png",
+      "websiteUrl": "https://www.labidee.com/it",
+      "created_at": "2026-09-21T09:49:52.585+00:00",
       "updated_at": "2026-09-21T10:03:36.939Z"
     }
   ],

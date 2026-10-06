@@ -7,8 +7,12 @@ export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
+      dedupe: ['react', 'react-dom'],
       alias: {
         '@': path.resolve(__dirname, '.'),
+        'motion/react': path.resolve(__dirname, './src/lib/motion.tsx'),
+        'motion': path.resolve(__dirname, './src/lib/motion.tsx'),
+        'framer-motion': path.resolve(__dirname, './src/lib/motion.tsx'),
       },
     },
     server: {

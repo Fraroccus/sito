@@ -1,4 +1,31 @@
 User-agent: *
 Allow: /
 
+# Google & Gemini Crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Google-InspectionTool
+Allow: /
+
+User-agent: GoogleOther
+Allow: /
+
+# AI Crawlers & Readers
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+Sitemap: https://www.roccoformazione.it/sitemap.xml
 Sitemap: https://roccoformazione.it/sitemap.xml
